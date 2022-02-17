@@ -75,8 +75,8 @@ def validation(net, val_data_loader, device, exp_name, save_tag=False):
             # print()
             save_image(pred_image, imgid, exp_name)
 
-    avr_psnr = sum(psnr_list) / len(psnr_list)
-    avr_ssim = sum(ssim_list) / len(ssim_list)
+    avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
+    avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
     return avr_psnr, avr_ssim
 
 
