@@ -12,7 +12,8 @@ from torchvision.models import vgg16
 from perceptual import LossNetwork
 import os
 import numpy as np
-import random
+import random 
+from torch.utils.tensorboard import SummaryWriter
 
 from transweather_model import Transweather
 
@@ -27,11 +28,11 @@ from transweather_model import Transweather
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
 parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4, type=float)
 parser.add_argument('-crop_size', help='Set the crop_size', default=[256, 256], nargs='+', type=int)
-parser.add_argument('-train_batch_size', help='Set the training batch size', default=4, type=int)
+parser.add_argument('-train_batch_size', help='Set the training batch size', default=8, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
 parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
-parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', type=str)
+parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=200, type=int)
 
@@ -136,6 +137,13 @@ print('Rain Drop old_val_psnr: {0:.2f}, old_val_ssim: {1:.4f}'.format(old_val_ps
 
 net.train()
 
+log_dir = "./logs"
+if not os.path.exists(log_dir):
+    os.mkdir(log_dir)
+writer = SummaryWriter(log_dir)
+
+count = 0
+
 for epoch in range(epoch_start,num_epochs):
     psnr_list = []
     start_time = time.time()
@@ -165,8 +173,12 @@ for epoch in range(epoch_start,num_epochs):
         # --- To calculate average PSNR --- #
         psnr_list.extend(to_psnr(pred_image, gt))
 
-        # if not (batch_id % 100):
-        print('Epoch: {0}, Iteration: {1}, loss: {2}'.format(epoch, batch_id, loss.item()))
+        count += 1
+        writer.add_scalar("Loss/train", loss.item(), count)
+
+        if not (batch_id % 100):
+            torch.save(net.state_dict(), './{}/latest'.format(exp_name))
+            print('Epoch: {0}, Iteration: {1}, loss: {2}'.format(epoch, batch_id, loss.item()))
 
     # --- Calculate the average training PSNR in one epoch --- #
     train_psnr = sum(psnr_list) / len(psnr_list)
@@ -180,6 +192,8 @@ for epoch in range(epoch_start,num_epochs):
     # val_psnr, val_ssim = validation(net, val_data_loader, device, exp_name)
     val_psnr1, val_ssim1 = validation(net, val_data_loader1, device, exp_name)
     # val_psnr2, val_ssim2 = validation(net, val_data_loader2, device, exp_name)
+    writer.add_scalar("Validation/PSNR", val_psnr1, count)
+    writer.add_scalar("Validation/SSIM", val_ssim1, count)
 
     one_epoch_time = time.time() - start_time
     # print("Rain 800")
