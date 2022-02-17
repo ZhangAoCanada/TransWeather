@@ -165,8 +165,8 @@ for epoch in range(epoch_start,num_epochs):
         # --- To calculate average PSNR --- #
         psnr_list.extend(to_psnr(pred_image, gt))
 
-        if not (batch_id % 100):
-            print('Epoch: {0}, Iteration: {1}'.format(epoch, batch_id))
+        # if not (batch_id % 100):
+        print('Epoch: {0}, Iteration: {1}, loss: {2}'.format(epoch, batch_id, loss.item()))
 
     # --- Calculate the average training PSNR in one epoch --- #
     train_psnr = sum(psnr_list) / len(psnr_list)
