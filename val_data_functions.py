@@ -21,8 +21,8 @@ class ValData(data.Dataset):
             if file.endswith(".png"):
                 in_name = os.path.join(input_dir, file)
                 image_names_tmp.append(in_name)
-        for im_name in image_names_tmp:
-            image_ind = re.findall(r'\d+', im_name)[0]
+        for in_name in image_names_tmp:
+            image_ind = re.findall(r'\d+', in_name)[0]
             gt_name = os.path.join(output_dir, image_ind + "_clean.png")
             if os.path.exists(gt_name):
                 image_names.append(in_name)
