@@ -3,3 +3,5 @@ __pycache__
 testt.py
 logs
 ckpt
+inference_test.py
+

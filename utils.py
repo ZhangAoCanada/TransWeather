@@ -64,7 +64,7 @@ def validation(net, val_data_loader, device, exp_name, save_tag=False):
             gt = gt.to(device)
             pred_image = net(input_im)
 
-# --- Calculate the average PSNR --- #
+        # --- Calculate the average PSNR --- #
         psnr_list.extend(calc_psnr(pred_image, gt))
 
         # --- Calculate the average SSIM --- #

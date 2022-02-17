@@ -99,7 +99,10 @@ for param in vgg_model.parameters():
 if os.path.exists('./{}/'.format(exp_name))==False:     
     os.mkdir('./{}/'.format(exp_name))  
 try:
-    net.load_state_dict(torch.load('./{}/best'.format(exp_name)))
+    if os.path.exists("./{}/origin_pretrained".format(exp_name)):
+        net.load_state_dict(torch.load('./{}/origin_pretrained'.format(exp_name)))
+    else:
+        net.load_state_dict(torch.load('./{}/best'.format(exp_name)))
     print('--- weight loaded ---')
 except:
     print('--- no weight loaded ---')
