@@ -123,10 +123,10 @@ def print_log(epoch, num_epochs, one_epoch_time, train_psnr, val_psnr, val_ssim,
           .format(one_epoch_time, epoch, num_epochs, train_psnr, val_psnr, val_ssim))
 
     # --- Write the training log --- #
-    with open('./training_log/{}_log.txt'.format( exp_name), 'a') as f:
-        print('Date: {0}s, Time_Cost: {1:.0f}s, Epoch: [{2}/{3}], Train_PSNR: {4:.2f}, Val_PSNR: {5:.2f}, Val_SSIM: {6:.4f}'
-              .format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                      one_epoch_time, epoch, num_epochs, train_psnr, val_psnr, val_ssim), file=f)
+    # with open('./logs/{}_log.txt'.format( exp_name), 'a') as f:
+    #     print('Date: {0}s, Time_Cost: {1:.0f}s, Epoch: [{2}/{3}], Train_PSNR: {4:.2f}, Val_PSNR: {5:.2f}, Val_SSIM: {6:.4f}'
+    #           .format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+    #                   one_epoch_time, epoch, num_epochs, train_psnr, val_psnr, val_ssim), file=f)
 
 
 
