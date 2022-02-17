@@ -10,7 +10,7 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import types
 import math
 from abc import ABCMeta, abstractmethod
-from mmcv.cnn import ConvModule
+# from mmcv.cnn import ConvModule
 import pdb
 
 class EncoderTransformer(nn.Module):
