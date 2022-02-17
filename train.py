@@ -52,7 +52,7 @@ seed = args.seed
 if seed is not None:
     np.random.seed(seed)
     torch.manual_seed(seed)
-    # torch.cuda.manual_seed(seed) # If GPU is available, change to GPU
+    torch.cuda.manual_seed(seed) # If GPU is available, change to GPU
     random.seed(seed) 
     print('Seed:\t{}'.format(seed))
 
@@ -62,8 +62,10 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
-test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
+# train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
+# test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
+train_data_dir = "/content/drive/MyDrive/DERAIN/train"
+test_data_dir = "/content/drive/MyDrive/DERAIN/test"
 image_dir = "data"
 gt_dir = "gt"
 
