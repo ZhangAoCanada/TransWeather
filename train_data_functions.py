@@ -1,3 +1,4 @@
+from pkg_resources import invalid_marker
 import torch.utils.data as data
 from PIL import Image
 from random import randrange
@@ -7,37 +8,47 @@ from PIL import ImageFile
 from os import path
 import numpy as np
 import torch
+import glob, os
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- Training dataset --- #
 class TrainData(data.Dataset):
-    def __init__(self, crop_size, train_data_dir,train_filename):
+    def __init__(self, crop_size, train_data_dir, image_dir, gt_dir):
         super().__init__()
-        train_list = train_data_dir + train_filename
-        with open(train_list) as f:
-            contents = f.readlines()
-            input_names = [i.strip() for i in contents]
-            gt_names = [i.strip().replace('input','gt') for i in input_names]
-
-        self.input_names = input_names
-        self.gt_names = gt_names
+        self.input_names, self.gt_names = self.getImageNames(train_data_dir, image_dir, gt_dir)
         self.crop_size = crop_size
         self.train_data_dir = train_data_dir
+
+    def getImageNames(self, root_dir, image_dir, gt_dir):
+        input_dir = os.path.join(root_dir, image_dir)
+        output_dir = os.path.join(root_dir, gt_dir)
+        image_names_tmp = []
+        image_names = []
+        gt_names = []
+        for file in os.listdir(input_dir):
+            if file.endswith(".png"):
+                in_name = os.path.join(input_dir, file)
+                image_names_tmp.append(in_name)
+        for im_name in image_names_tmp:
+            image_ind = re.findall(r'\d+', im_name)[0]
+            gt_name = os.path.join(output_dir, image_ind + "_clean.png")
+            if os.path.exists(gt_name):
+                image_names.append(in_name)
+                gt_names.append(gt_name)
+        return image_names, gt_names
 
     def get_images(self, index):
         crop_width, crop_height = self.crop_size
         input_name = self.input_names[index]
         gt_name = self.gt_names[index]
 
-        img_id = re.split('/',input_name)[-1][:-4]
-
-        input_img = Image.open(self.train_data_dir + input_name)
-
+        input_img = Image.open(input_name)
 
         try:
-            gt_img = Image.open(self.train_data_dir + gt_name)
+            gt_img = Image.open(gt_name)
         except:
-            gt_img = Image.open(self.train_data_dir + gt_name).convert('RGB')
+            gt_img = Image.open(gt_name).convert('RGB')
 
         width, height = input_img.size
 
@@ -67,7 +78,7 @@ class TrainData(data.Dataset):
         if list(input_im.shape)[0] is not 3 or list(gt.shape)[0] is not 3:
             raise Exception('Bad image channel: {}'.format(gt_name))
 
-        return input_im, gt, img_id
+        return input_im, gt
 
     def __getitem__(self, index):
         res = self.get_images(index)

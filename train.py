@@ -16,7 +16,12 @@ import random
 
 from transweather_model import Transweather
 
-plt.switch_backend('agg')
+### NOTE: add GD path ###
+# import sys
+# sys.path.append('/content/drive/MyDrive/train/data')
+
+### NOTE: backend agg ###
+# plt.switch_backend('agg')
 
 # --- Parse hyper-parameters  --- #
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
@@ -47,7 +52,7 @@ seed = args.seed
 if seed is not None:
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    # torch.cuda.manual_seed(seed) # If GPU is available, change to GPU
     random.seed(seed) 
     print('Seed:\t{}'.format(seed))
 
@@ -56,8 +61,11 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
       train_batch_size, val_batch_size, lambda_loss))
 
 
-train_data_dir = './data/train/'
-val_data_dir = './data/test/'
+##################### NOTE: Change the path to the dataset #####################
+train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
+test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
+image_dir = "data"
+gt_dir = "gt"
 
 # --- Gpu device --- #
 device_ids = [Id for Id in range(torch.cuda.device_count())]
@@ -100,26 +108,12 @@ loss_network = LossNetwork(vgg_model)
 loss_network.eval()
 
 # --- Load training data and validation/test data --- #
-
-### The following file should be placed inside the directory "./data/train/"
-
-labeled_name = 'allweather.txt'
-
-### The following files should be placed inside the directory "./data/test/"
-
-# val_filename = 'val_list_rain800.txt'
-val_filename1 = 'raindroptesta.txt'
-# val_filename2 = 'test1.txt'
-
-# --- Load training data and validation/test data --- #
-lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir,labeled_name), batch_size=train_batch_size, shuffle=True, num_workers=8)
+lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, image_dir, gt_dir), batch_size=train_batch_size, shuffle=True, num_workers=4)
 
 ## Uncomment the other validation data loader to keep an eye on performance 
 ## but note that validating while training significantly increases the train time 
 
-# val_data_loader = DataLoader(ValData(val_data_dir,val_filename), batch_size=val_batch_size, shuffle=False, num_workers=8)
-val_data_loader1 = DataLoader(ValData(val_data_dir,val_filename1), batch_size=val_batch_size, shuffle=False, num_workers=8)
-# val_data_loader2 = DataLoader(ValData(val_data_dir,val_filename2), batch_size=val_batch_size, shuffle=False, num_workers=8)
+val_data_loader1 = DataLoader(ValData(test_data_dir, image_dir, gt_dir), batch_size=val_batch_size, shuffle=False, num_workers=4)
 
 
 # --- Previous PSNR and SSIM in testing --- #
@@ -147,7 +141,7 @@ for epoch in range(epoch_start,num_epochs):
 #-------------------------------------------------------------------------------------------------------------
     for batch_id, train_data in enumerate(lbl_train_data_loader):
 
-        input_image, gt, imgid = train_data
+        input_image, gt = train_data
         input_image = input_image.to(device)
         gt = gt.to(device)
 

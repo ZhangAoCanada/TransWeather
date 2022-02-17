@@ -2,26 +2,38 @@ import torch.utils.data as data
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
 import numpy as np
+import os, glob, re
 
 # --- Validation/test dataset --- #
 class ValData(data.Dataset):
-    def __init__(self, val_data_dir,val_filename):
+    def __init__(self, val_data_dir, image_dir, gt_dir):
         super().__init__()
-        val_list = val_data_dir + val_filename
-        with open(val_list) as f:
-            contents = f.readlines()
-            input_names = [i.strip() for i in contents]
-            gt_names = [i.strip().replace('input','gt') for i in input_names]
-
-        self.input_names = input_names
-        self.gt_names = gt_names
+        self.input_names, self.gt_names = self.getImageNames(val_data_dir, image_dir, gt_dir)
         self.val_data_dir = val_data_dir
+
+    def getImageNames(self, root_dir, image_dir, gt_dir):
+        input_dir = os.path.join(root_dir, image_dir)
+        output_dir = os.path.join(root_dir, gt_dir)
+        image_names_tmp = []
+        image_names = []
+        gt_names = []
+        for file in os.listdir(input_dir):
+            if file.endswith(".jpg"):
+                in_name = os.path.join(input_dir, file)
+                image_names_tmp.append(in_name)
+        for im_name in image_names_tmp:
+            image_ind = re.findall(r'\d+', im_name)[0]
+            gt_name = os.path.join(output_dir, image_ind + "_clean.jpg")
+            if os.path.exists(gt_name):
+                image_names.append(in_name)
+                gt_names.append(gt_name)
+        return image_names, gt_names
 
     def get_images(self, index):
         input_name = self.input_names[index]
         gt_name = self.gt_names[index]
-        input_img = Image.open(self.val_data_dir + input_name)
-        gt_img = Image.open(self.val_data_dir + gt_name)
+        input_img = Image.open(input_name)
+        gt_img = Image.open(gt_name)
 
         # Resizing image in the multiple of 16"
         wd_new,ht_new = input_img.size
