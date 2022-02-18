@@ -130,7 +130,7 @@ def print_log(epoch, num_epochs, one_epoch_time, train_psnr, val_psnr, val_ssim,
 
 
 
-def adjust_learning_rate(optimizer, epoch,  lr_decay=0.9):
+def adjust_learning_rate(optimizer, epoch,  lr_decay=0.95):
 
     # --- Decay learning rate --- #
     step = 1
