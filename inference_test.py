@@ -31,8 +31,10 @@ exp_name = args.exp_name
 
 # train_data_dir = "/content/drive/MyDrive/DERAIN/train"
 # test_data_dir = "/content/drive/MyDrive/DERAIN/test"
-train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
-test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
+# train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
+# test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
+train_data_dir = "/home/admin/workspace/derain/DATA/train"
+test_data_dir = "/home/admin/workspace/derain/DATA/test"
 image_dir = "data"
 gt_dir = "gt"
 
