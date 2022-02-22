@@ -99,7 +99,7 @@ for i, data in tqdm(enumerate(val_data_loader)):
     avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
     avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
 
-print("[RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f}".format(avr_psnr, avr_ssim, np.mean(inference_time_durations)))
+print("[RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr, avr_ssim, np.mean(inference_time_durations)*1000))
 
 
 # ### NOTE: forward 1 image ###
