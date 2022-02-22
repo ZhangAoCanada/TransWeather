@@ -56,9 +56,9 @@ net = Transweather()
 net = nn.DataParallel(net, device_ids=device_ids)
 
 if device == torch.device("cpu"):
-    net.load_state_dict(torch.load("/home/ao/image_derain/TransWeather/ckpt/latest", map_location=torch.device('cpu')))
+    net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load("/home/ao/image_derain/TransWeather/ckpt/best"))
+    net.load_state_dict(torch.load("ckpt/best"))
     net.to(device)
 
 net.eval()
