@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
+
 import time
 import torch
 import argparse
