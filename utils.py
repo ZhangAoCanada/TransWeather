@@ -15,6 +15,7 @@ def calc_psnr(im1, im2):
     im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
     im2 = im2[0].view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
 
+    im1, im2 = img_as_ubyte(im1), img_as_ubyte(im2)
 
     im1_y = cv2.cvtColor(im1, cv2.COLOR_BGR2YCR_CB)[:, :, 0]
     im2_y = cv2.cvtColor(im2, cv2.COLOR_BGR2YCR_CB)[:, :, 0]
@@ -24,6 +25,8 @@ def calc_psnr(im1, im2):
 def calc_ssim(im1, im2):
     im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
     im2 = im2[0].view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
+
+    im1, im2 = img_as_ubyte(im1), img_as_ubyte(im2)
 
     im1_y = cv2.cvtColor(im1, cv2.COLOR_BGR2YCR_CB)[:, :, 0]
     im2_y = cv2.cvtColor(im2, cv2.COLOR_BGR2YCR_CB)[:, :, 0]
