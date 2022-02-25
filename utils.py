@@ -10,6 +10,7 @@ import skimage
 import cv2
 from skimage.measure import compare_psnr, compare_ssim
 import pdb
+from skimage import img_as_ubyte
 def calc_psnr(im1, im2):
 
     im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
