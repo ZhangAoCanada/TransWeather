@@ -63,11 +63,14 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-# train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
-# test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
-train_data_dir = "/content/drive/MyDrive/DERAIN/train"
-test_data_dir = "/content/drive/MyDrive/DERAIN/test"
-image_dir = "data"
+# train_data_dir = "/content/drive/MyDrive/DERAIN/train"
+# test_data_dir = "/content/drive/MyDrive/DERAIN/test"
+# image_dir = "data"
+# gt_dir = "gt"
+
+train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
+image_dir = "rain_L"
 gt_dir = "gt"
 
 # --- Gpu device --- #
@@ -141,7 +144,7 @@ print('Rain Drop old_val_psnr: {0:.2f}, old_val_ssim: {1:.4f}'.format(old_val_ps
 
 net.train()
 
-log_dir = "./logs"
+log_dir = "./logs/675_experiment_images"
 if not os.path.exists(log_dir):
     os.mkdir(log_dir)
 writer = SummaryWriter(log_dir)

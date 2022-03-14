@@ -21,6 +21,8 @@ import cv2
 import re
 from tqdm import tqdm
 
+from torchinfo import summary
+
 
 # --- Parse hyper-parameters  --- #
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
@@ -54,7 +56,7 @@ device_ids = [Id for Id in range(torch.cuda.device_count())]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 net = Transweather()
-
+summary(net, (1, 3, 720, 480))
 
 net = nn.DataParallel(net, device_ids=device_ids)
 
