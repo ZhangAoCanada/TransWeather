@@ -125,6 +125,8 @@ lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, image_di
 
 val_data_loader1 = DataLoader(ValData(test_data_dir, image_dir, gt_dir), batch_size=val_batch_size, shuffle=False, num_workers=4)
 
+print("Number of training data: {}".format(len(lbl_train_data_loader)))
+print("Number of validation data: {}".format(len(val_data_loader1)))
 
 # --- Previous PSNR and SSIM in testing --- #
 net.eval()
