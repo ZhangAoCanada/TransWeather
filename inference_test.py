@@ -34,13 +34,14 @@ args = parser.parse_args()
 val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 
-train_data_dir = "/content/drive/MyDrive/DERAIN/train"
-test_data_dir = "/content/drive/MyDrive/DERAIN/test"
-# train_data_dir = "/mnt/d/DATASET/Derain_DATA/train"
-# test_data_dir = "/mnt/d/DATASET/Derain_DATA/test"
-# train_data_dir = "/home/admin/workspace/derain/DATA/train"
-# test_data_dir = "/home/admin/workspace/derain/DATA/test"
-image_dir = "data"
+# train_data_dir = "/content/drive/MyDrive/DERAIN/train"
+# test_data_dir = "/content/drive/MyDrive/DERAIN/test"
+# image_dir = "data"
+# gt_dir = "gt"
+
+train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
+image_dir = "rain_L"
 gt_dir = "gt"
 
 #set seed
