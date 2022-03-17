@@ -100,6 +100,8 @@ with torch.no_grad():
         pred_image = net(input_img)
         pred_image_cpu = pred_image[0].view(pred_image.shape[2],pred_image.shape[3],3).detach().cpu().numpy()
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
-        print(frame.shape, pred_image_cpu.shape)
+        pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
+        image = np.concatenate((frame, pred_image_cpu), axis=1)
+        video_saving.write(image)
 
 
