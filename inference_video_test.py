@@ -56,7 +56,7 @@ val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 
 video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/sample_video.avi"
-output_video_path = "./imgs/result_video.avi"
+output_video_path = "./videos/result_video.avi"
 
 video = cv2.VideoCapture(video_path)
 video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1280,720))
