@@ -59,7 +59,7 @@ video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/sample_
 output_video_path = "./videos/result_video.avi"
 
 video = cv2.VideoCapture(video_path)
-video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1280,720))
+video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2560,720))
 
 #set seed
 seed = args.seed
@@ -102,6 +102,7 @@ with torch.no_grad():
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
         image = np.concatenate((frame, pred_image_cpu), axis=1)
+        print(image.shape)
         video_saving.write(image)
 
 
