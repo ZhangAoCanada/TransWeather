@@ -59,8 +59,8 @@ video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/sample_
 output_video_path = "./videos/result_video.avi"
 
 video = cv2.VideoCapture(video_path)
-video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2560,720))
-# video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1280,720))
+video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
+# video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1020,720))
 
 #set seed
 seed = args.seed
@@ -91,6 +91,7 @@ net.eval()
 with torch.no_grad():
     while True:
         ret, frame = video.read()
+        frame = frame[:, 180:1200, :]
         if not ret:
             break
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
