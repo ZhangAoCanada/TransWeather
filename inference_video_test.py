@@ -59,7 +59,8 @@ video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/sample_
 output_video_path = "./videos/result_video.avi"
 
 video = cv2.VideoCapture(video_path)
-video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2560,720))
+# video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2560,720))
+video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1280,720))
 
 #set seed
 seed = args.seed
