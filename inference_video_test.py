@@ -93,7 +93,6 @@ with torch.no_grad():
         ret, frame = video.read()
         if not ret:
             break
-        print(frame.shape)
         frame = frame[:, 180:1200, :]
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         input_img = preprocessImage(pil_img)
