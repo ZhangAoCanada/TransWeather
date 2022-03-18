@@ -98,12 +98,10 @@ with torch.no_grad():
         input_img = input_img.to(device)
         input_img = input_img.unsqueeze(0)
         pred_image = net(input_img)
-        # pred_image = torch.split(pred_image, 1, dim=0)
         pred_image_cpu = pred_image[0].permute(1,2,0).cpu().numpy()
-        # print(pred_image_cpu.shape)
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
-        # image = np.concatenate((frame[..., ::-1], pred_image_cpu), axis=1)
+        image = np.concatenate((frame, pred_image_cpu[..., ::-1]), axis=1)
         video_saving.write(pred_image_cpu)
 
 
