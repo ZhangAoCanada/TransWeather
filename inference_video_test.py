@@ -74,7 +74,6 @@ device_ids = [Id for Id in range(torch.cuda.device_count())]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 net = Transweather()
-summary(net, (1, 3, 720, 480))
 
 net = nn.DataParallel(net, device_ids=device_ids)
 
@@ -101,8 +100,7 @@ with torch.no_grad():
         pred_image_cpu = pred_image[0].view(pred_image.shape[2],pred_image.shape[3],3).detach().cpu().numpy()
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
-        image = np.concatenate((frame, pred_image_cpu), axis=1)
-        print(image.shape)
-        video_saving.write(image)
+        # image = np.concatenate((frame[..., ::-1], pred_image_cpu), axis=1)
+        video_saving.write(pred_image_cpu)
 
 
