@@ -68,9 +68,11 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 # image_dir = "data"
 # gt_dir = "gt"
 
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
-image_dir = "rain_L"
+train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/train"
+validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/validate"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/test"
+rain_L_dir = "rain_L"
+rain_H_dir = "rain_H"
 gt_dir = "gt"
 
 # --- Gpu device --- #
@@ -118,12 +120,12 @@ loss_network = LossNetwork(vgg_model)
 loss_network.eval()
 
 # --- Load training data and validation/test data --- #
-lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, image_dir, gt_dir), batch_size=train_batch_size, shuffle=True, num_workers=4)
+lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, rain_L_dir, rain_H_dir, gt_dir), batch_size=train_batch_size, shuffle=True, num_workers=4)
 
 ## Uncomment the other validation data loader to keep an eye on performance 
 ## but note that validating while training significantly increases the train time 
 
-val_data_loader1 = DataLoader(ValData(test_data_dir, image_dir, gt_dir), batch_size=val_batch_size, shuffle=False, num_workers=4)
+val_data_loader1 = DataLoader(ValData(validate_data_dir, rain_L_dir, rain_H_dir, gt_dir), batch_size=val_batch_size, shuffle=False, num_workers=4)
 
 print("Number of training data: {}".format(len(lbl_train_data_loader)))
 print("Number of validation data: {}".format(len(val_data_loader1)))

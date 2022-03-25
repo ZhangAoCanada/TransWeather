@@ -6,12 +6,15 @@ import os, glob, re
 
 # --- Validation/test dataset --- #
 class ValData(data.Dataset):
-    def __init__(self, val_data_dir, image_dir, gt_dir):
+    def __init__(self, val_data_dir, rain_L_dir, rain_H_dir, gt_dir):
         super().__init__()
-        self.input_names, self.gt_names = self.getImageNames(val_data_dir, image_dir, gt_dir)
+        self.input_names_L, self.gt_names_L = self.getRainLImageNames(val_data_dir, rain_L_dir, gt_dir)
+        self.input_names_H, self.gt_names_H = self.getRainHImageNames(val_data_dir, rain_H_dir, gt_dir)
+        self.input_names = self.input_names_L + self.input_names_H
+        self.gt_names = self.gt_names_L + self.gt_names_H
         self.val_data_dir = val_data_dir
 
-    def getImageNames(self, root_dir, image_dir, gt_dir):
+    def getRainLImageNames(self, root_dir, image_dir, gt_dir):
         input_dir = os.path.join(root_dir, image_dir)
         output_dir = os.path.join(root_dir, gt_dir)
         image_names_tmp = []
@@ -26,7 +29,28 @@ class ValData(data.Dataset):
             # image_ind = re.findall(r'\d+', in_name)[0]
             # gt_name = os.path.join(output_dir, image_ind + "_clean.png")
             ### NOTE: choice 2 ###
-            gt_name = in_name.replace(image_dir, gt_dir)
+            gt_name = in_name.replace(image_dir, gt_dir).replace("Rain_L_", "No_Rain_")
+            if os.path.exists(gt_name):
+                image_names.append(in_name)
+                gt_names.append(gt_name)
+        return image_names, gt_names
+
+    def getRainHImageNames(self, root_dir, image_dir, gt_dir):
+        input_dir = os.path.join(root_dir, image_dir)
+        output_dir = os.path.join(root_dir, gt_dir)
+        image_names_tmp = []
+        image_names = []
+        gt_names = []
+        for file in os.listdir(input_dir):
+            if file.endswith(".png"):
+                in_name = os.path.join(input_dir, file)
+                image_names_tmp.append(in_name)
+        for in_name in image_names_tmp:
+            ### NOTE: choice 1 ###
+            # image_ind = re.findall(r'\d+', in_name)[0]
+            # gt_name = os.path.join(output_dir, image_ind + "_clean.png")
+            ### NOTE: choice 2 ###
+            gt_name = in_name.replace(image_dir, gt_dir).replace("Rain_H_", "No_Rain_")
             if os.path.exists(gt_name):
                 image_names.append(in_name)
                 gt_names.append(gt_name)
