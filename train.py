@@ -148,7 +148,7 @@ print('Rain Drop old_val_psnr: {0:.2f}, old_val_ssim: {1:.4f}'.format(old_val_ps
 
 net.train()
 
-log_dir = "./logs/675_experiment_images"
+log_dir = "./logs/2070_images"
 if not os.path.exists(log_dir):
     os.mkdir(log_dir)
 writer = SummaryWriter(log_dir)
