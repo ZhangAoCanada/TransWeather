@@ -38,7 +38,7 @@ class TrainData(data.Dataset):
             # image_ind = re.findall(r'\d+', in_name)[0]
             # gt_name = os.path.join(output_dir, image_ind + "_clean.png")
             ### NOTE: choice 2 ###
-            gt_name = in_name.replace(image_dir, gt_dir).replace("No_Rain_", "Rain_L_")
+            gt_name = in_name.replace(image_dir, gt_dir).replace("Rain_L_", "No_Rain_")
             if os.path.exists(gt_name):
                 image_names.append(in_name)
                 gt_names.append(gt_name)
@@ -59,7 +59,7 @@ class TrainData(data.Dataset):
             # image_ind = re.findall(r'\d+', in_name)[0]
             # gt_name = os.path.join(output_dir, image_ind + "_clean.png")
             ### NOTE: choice 2 ###
-            gt_name = in_name.replace(image_dir, gt_dir).replace("No_Rain_", "Rain_H_")
+            gt_name = in_name.replace(image_dir, gt_dir).replace("Rain_H_", "No_Rain_")
             if os.path.exists(gt_name):
                 image_names.append(in_name)
                 gt_names.append(gt_name)
