@@ -34,14 +34,13 @@ args = parser.parse_args()
 val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 
-# train_data_dir = "/content/drive/MyDrive/DERAIN/train"
 # test_data_dir = "/content/drive/MyDrive/DERAIN/test"
 # image_dir = "data"
 # gt_dir = "gt"
 
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_captured"
-image_dir = "rain_L"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/test"
+rain_L_dir = "rain_L"
+rain_H_dir = "rain_H"
 gt_dir = "gt"
 
 #set seed
@@ -69,16 +68,19 @@ else:
 
 net.eval()
 
-val_dataset = ValData(test_data_dir, image_dir, gt_dir)
-val_data_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=4)
+val_rain_L_dataset = ValData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_L")
+val_rain_L_data_loader = DataLoader(val_rain_L_dataset, batch_size=1, shuffle=False, num_workers=4)
 
+val_rain_H_dataset = ValData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_H")
+val_rain_H_data_loader = DataLoader(val_rain_H_dataset, batch_size=1, shuffle=False, num_workers=4)
 
 ### NOTE: start evaluation ###
-bar = tqdm(total = len(val_dataset))
+bar = tqdm(total = len(val_rain_L_data_loader) + len(val_rain_H_data_loader))
 psnr_list = []
 ssim_list = []
 inference_time_durations = []
-for i, data in tqdm(enumerate(val_data_loader)):
+
+for i, data in tqdm(enumerate(val_rain_L_data_loader)):
     bar.update(1)
     with torch.no_grad():
         input_img, gt, imgid = data
@@ -92,17 +94,54 @@ for i, data in tqdm(enumerate(val_data_loader)):
         ind = re.findall(r'\d+', ind)[0]
 
         pred_image_images = torch.split(pred_image, 1, dim=0)
-        utils.save_image(pred_image_images[0], 'imgs/{}_test.png'.format(ind))
+        utils.save_image(pred_image_images[0], 'imgs/{}_rainL.png'.format(ind))
 
         # --- Calculate the average PSNR --- #
         psnr_list.extend(calc_psnr(pred_image, gt))
         # --- Calculate the average SSIM --- #
         ssim_list.extend(calc_ssim(pred_image, gt))
 
-    avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
-    avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
+avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
+avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
 
-print("[RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr, avr_ssim, np.mean(inference_time_durations)*1000))
+print("[RainL RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr, avr_ssim, np.mean(inference_time_durations)*1000))
+
+psnr_list_rainH = []
+ssim_list_rainH = []
+inference_time_durations_rainH = []
+for i, data in tqdm(enumerate(val_rain_H_data_loader)):
+    bar.update(1)
+    with torch.no_grad():
+        input_img, gt, imgid = data
+        input_img = input_img.to(device)
+        gt = gt.to(device)
+        start_time = time.time()
+        pred_image = net(input_img)
+        time_duration = time.time() - start_time
+        inference_time_durations.append(time_duration)
+        inference_time_durations_rainH.append(time_duration)
+        ind = imgid[0].split("/")[-1].split(".")[0]
+        ind = re.findall(r'\d+', ind)[0]
+
+        pred_image_images = torch.split(pred_image, 1, dim=0)
+        utils.save_image(pred_image_images[0], 'imgs/{}_rainH.png'.format(ind))
+
+        # --- Calculate the average PSNR --- #
+        psnr_list.extend(calc_psnr(pred_image, gt))
+        psnr_list_rainH.extend(calc_psnr(pred_image, gt))
+        # --- Calculate the average SSIM --- #
+        ssim_list.extend(calc_ssim(pred_image, gt))
+        psnr_list_rainH.extend(calc_ssim(pred_image, gt))
+
+avr_psnr_H = sum(psnr_list_rainH) / (len(psnr_list_rainH) + 1e-10)
+avr_ssim_H = sum(ssim_list_rainH) / (len(ssim_list_rainH) + 1e-10)
+
+print("[RainH RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr_H, avr_ssim_H, np.mean(inference_time_durations_rainH)*1000))
+
+avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
+avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
+
+print("[OVERALL RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr, avr_ssim, np.mean(inference_time_durations)*1000))
 
 
 # ### NOTE: forward 1 image ###
