@@ -91,10 +91,10 @@ for i, data in tqdm(enumerate(val_rain_L_data_loader)):
         time_duration = time.time() - start_time
         inference_time_durations.append(time_duration)
         ind = imgid[0].split("/")[-1].split(".")[0]
-        ind = re.findall(r'\d+', ind)[0]
+        # ind = re.findall(r'\d+', ind)[0]
 
         pred_image_images = torch.split(pred_image, 1, dim=0)
-        utils.save_image(pred_image_images[0], 'imgs/{}_rainL.png'.format(ind))
+        utils.save_image(pred_image_images[0], 'imgs/{}_pred.png'.format(ind))
 
         # --- Calculate the average PSNR --- #
         psnr_list.extend(calc_psnr(pred_image, gt))
@@ -121,10 +121,10 @@ for i, data in tqdm(enumerate(val_rain_H_data_loader)):
         inference_time_durations.append(time_duration)
         inference_time_durations_rainH.append(time_duration)
         ind = imgid[0].split("/")[-1].split(".")[0]
-        ind = re.findall(r'\d+', ind)[0]
+        # ind = re.findall(r'\d+', ind)[0]
 
         pred_image_images = torch.split(pred_image, 1, dim=0)
-        utils.save_image(pred_image_images[0], 'imgs/{}_rainH.png'.format(ind))
+        utils.save_image(pred_image_images[0], 'imgs/{}_pred.png'.format(ind))
 
         # --- Calculate the average PSNR --- #
         psnr_list.extend(calc_psnr(pred_image, gt))
