@@ -5,7 +5,7 @@ import numpy as np
 import os, glob, re
 
 # --- Validation/test dataset --- #
-class ValData(data.Dataset):
+class TestData(data.Dataset):
     def __init__(self, val_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_L"):
         super().__init__()
         self.input_names_L, self.gt_names_L = self.getRainLImageNames(val_data_dir, rain_L_dir, gt_dir)

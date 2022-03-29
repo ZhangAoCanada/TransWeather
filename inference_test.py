@@ -6,7 +6,7 @@ import torch
 import argparse
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from val_data_functions import ValData
+from test_data_functions import TestData
 from utils import validation, validation_val, calc_psnr, calc_ssim
 import os
 import numpy as np
@@ -68,10 +68,10 @@ else:
 
 net.eval()
 
-val_rain_L_dataset = ValData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_L")
+val_rain_L_dataset = TestData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_L")
 val_rain_L_data_loader = DataLoader(val_rain_L_dataset, batch_size=1, shuffle=False, num_workers=4)
 
-val_rain_H_dataset = ValData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_H")
+val_rain_H_dataset = TestData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_H")
 val_rain_H_data_loader = DataLoader(val_rain_H_dataset, batch_size=1, shuffle=False, num_workers=4)
 
 ### NOTE: start evaluation ###
