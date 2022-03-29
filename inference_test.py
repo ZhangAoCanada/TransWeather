@@ -131,7 +131,7 @@ for i, data in tqdm(enumerate(val_rain_H_data_loader)):
         psnr_list_rainH.extend(calc_psnr(pred_image, gt))
         # --- Calculate the average SSIM --- #
         ssim_list.extend(calc_ssim(pred_image, gt))
-        psnr_list_rainH.extend(calc_ssim(pred_image, gt))
+        ssim_list_rainH.extend(calc_ssim(pred_image, gt))
 
 avr_psnr_H = sum(psnr_list_rainH) / (len(psnr_list_rainH) + 1e-10)
 avr_ssim_H = sum(ssim_list_rainH) / (len(ssim_list_rainH) + 1e-10)
