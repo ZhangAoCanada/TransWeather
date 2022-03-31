@@ -27,8 +27,10 @@ from transweather_model import Transweather
 # --- Parse hyper-parameters  --- #
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
 parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4, type=float)
-parser.add_argument('-crop_size', help='Set the crop_size', default=[256, 256], nargs='+', type=int)
-parser.add_argument('-train_batch_size', help='Set the training batch size', default=16, type=int)
+# parser.add_argument('-crop_size', help='Set the crop_size', default=[256, 256], nargs='+', type=int)
+parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
+# parser.add_argument('-train_batch_size', help='Set the training batch size', default=16, type=int)
+parser.add_argument('-train_batch_size', help='Set the training batch size', default=8, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
 parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
