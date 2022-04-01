@@ -65,7 +65,8 @@ net = nn.DataParallel(net, device_ids=device_ids)
 if device == torch.device("cpu"):
     net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load("ckpt/best"))
+    net.load_state_dict(torch.load("ckpt/best_256"))
+    print("-------- loading best_256 --------")
     net.to(device)
 
 net.eval()
