@@ -65,13 +65,13 @@ net = nn.DataParallel(net, device_ids=device_ids)
 if device == torch.device("cpu"):
     net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load("ckpt/best_256"))
-    print("-------- loading best_256 --------")
+    net.load_state_dict(torch.load("ckpt/best_512"))
+    print("-------- loading best_512 --------")
     net.to(device)
 
 net.eval()
 
-def inferenceOneDir(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, net, device, val_batch_size):
+def inferenceOneDir(test_data_dir, sub_name, rain_L_dir, rain_H_dir, gt_dir, net, device, val_batch_size):
 
     val_rain_L_dataset = TestData(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, mode="rain_L")
     val_rain_L_data_loader = DataLoader(val_rain_L_dataset, batch_size=1, shuffle=False, num_workers=4)
@@ -144,6 +144,7 @@ def inferenceOneDir(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, net, device, 
 
     avr_psnr_H = sum(psnr_list_rainH) / (len(psnr_list_rainH) + 1e-10)
     avr_ssim_H = sum(ssim_list_rainH) / (len(ssim_list_rainH) + 1e-10)
+    print("------ currently " + sub_name + " is under test --------")
 
     print("[RainL RESULTS] PSNR: {:.4f}, SSIM: {:.4f}, Average time: {:.4f} ms".format(avr_psnr_L, avr_ssim_L, np.mean(inference_time_durations_rainL)*1000))
 
@@ -156,8 +157,7 @@ def inferenceOneDir(test_data_dir, rain_L_dir, rain_H_dir, gt_dir, net, device, 
 
 for sub_name in sub_dir_names:
     test_data_dir_curr = os.path.join(test_data_dir, sub_name)
-    print("------ currently " + sub_name + " is under test --------")
-    inferenceOneDir(test_data_dir_curr, rain_L_dir, rain_H_dir, gt_dir, net, device, val_batch_size)
+    inferenceOneDir(test_data_dir_curr, sub_name, rain_L_dir, rain_H_dir, gt_dir, net, device, val_batch_size)
 
 
 # ### NOTE: forward 1 image ###
