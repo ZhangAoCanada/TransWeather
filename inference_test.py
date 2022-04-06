@@ -67,6 +67,7 @@ if device == torch.device("cpu"):
 else:
     net.load_state_dict(torch.load("ckpt/best"))
     net.to(device)
+    print("====> model best loaded.")
 
 net.eval()
 
