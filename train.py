@@ -108,8 +108,8 @@ for param in vgg_model.parameters():
 if os.path.exists('./{}/'.format(exp_name))==False:     
     os.mkdir('./{}/'.format(exp_name))  
 try:
-    if os.path.exists("./{}/best".format(exp_name)):
-        net.load_state_dict(torch.load('./{}/best'.format(exp_name)))
+    if os.path.exists("./{}/latest".format(exp_name)):
+        net.load_state_dict(torch.load('./{}/latest'.format(exp_name)))
         print("----- last trained loaded -----")
     else:
         net.load_state_dict(torch.load('./{}/origin_pretrained'.format(exp_name)))

@@ -134,10 +134,10 @@ def print_log(epoch, num_epochs, one_epoch_time, train_psnr, val_psnr, val_ssim,
 
 
 
-def adjust_learning_rate(optimizer, epoch,  lr_decay=0.95):
+def adjust_learning_rate(optimizer, epoch,  lr_decay=0.96):
 
     # --- Decay learning rate --- #
-    step = 2
+    step = 3
 
     if not epoch % step and epoch > 0:
         for param_group in optimizer.param_groups:
