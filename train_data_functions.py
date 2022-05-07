@@ -65,8 +65,31 @@ class TrainData(data.Dataset):
                 image_names.append(in_name)
                 gt_names.append(gt_name)
         return image_names, gt_names
+    
+    def getCutMixImageNames(self, input_img, gt_img):
+        portion = 0.4
+        target_idx = random.randint(0, len(self.input_names) - 1)
+        target_input_name = self.input_names[target_idx]
+        target_gt_name = self.gt_names[target_idx]
+        target_input_img = Image.open(target_input_name)
+        target_gt_img = Image.open(target_gt_name)
+        target_input_img_array = np.array(target_input_img)
+        target_gt_img_array = np.array(target_gt_img)
+        input_img_array = np.array(input_img)
+        gt_img_array = np.array(gt_img)
+
+        CutMix_h, CutMix_w = int(gt_img_array.shape[0] * portion), int(gt_img_array.shape[1] * portion)
+        CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
+        gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
+        input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
+        input_img = Image.fromarray(input_img_array)
+        gt_img = Image.fromarray(gt_img_array)
+        return input_img, gt_img
 
     def get_images(self, index):
+        # --- NOTE: data augmentation --- #
+        aug = random.randint(0, 1)
+        
         crop_width, crop_height = self.crop_size
         input_name = self.input_names[index]
         gt_name = self.gt_names[index]
@@ -77,6 +100,10 @@ class TrainData(data.Dataset):
             gt_img = Image.open(gt_name)
         except:
             gt_img = Image.open(gt_name).convert('RGB')
+
+        # --- NOTE: data augmentation: CutMix --- #
+        if aug == 1:
+            input_img, gt_img = self.getCutMixImageNames(input_img, gt_img)
 
         width, height = input_img.size
 
@@ -103,58 +130,39 @@ class TrainData(data.Dataset):
         gt = transform_gt(gt_crop_img)
 
         # --- TODO: data augmentation --- #
-        # aug = random.randint(0, 11)
-        # if aug == 1:
+        # if aug == 2:
         #     input_im = TF.hflip(input_im)
         #     gt = TF.hflip(gt)
-        # elif aug == 2:
+        # elif aug == 3:
         #     input_im = TF.vflip(input_im)
         #     gt = TF.vflip(gt)
-        # elif aug == 3:
+        # elif aug == 4:
         #     input_im = TF.rotate(input_im, 90)
         #     gt = TF.rotate(gt, 90)
-        # elif aug == 4:
-        #     input_im = TF.rotate(input_im, 270)
-        #     gt = TF.rotate(gt, 270)
-        # elif aug == 5:
-        #     input_im = TF.gaussian_blur(input_im, kernel_size=3)
-        #     gt = TF.gaussian_blur(gt, kernel_size=3)
-        # elif aug == 6:
-        #     input_im = TF.gaussian_blur(input_im, kernel_size=5)
-        #     gt = TF.gaussian_blur(gt, kernel_size=5)
-        # elif aug == 7:
-        #     input_im = TF.adjust_brightness(input_im, 0.5)
-        #     gt = TF.adjust_brightness(gt, 0.5)
-        # elif aug == 8:
-        #     input_im = TF.adjust_brightness(input_im, 2)
-        #     gt = TF.adjust_brightness(gt, 2)
-        # elif aug == 9:
-        #     input_im = TF.adjust_contrast(input_im, 0.5)
-        #     gt = TF.adjust_contrast(gt, 0.5)
-        # elif aug == 10:
-        #     input_im = TF.adjust_contrast(input_im, 2)
-        #     gt = TF.adjust_contrast(gt, 2)
-        # elif aug == 11:
+        # if aug == 5:
         #     input_im = TF.rotate(input_im, 180)
         #     gt = TF.rotate(gt, 180)
-
-
-        aug = random.randint(0, 5)
-        if aug == 1:
-            input_im = TF.hflip(input_im)
-            gt = TF.hflip(gt)
-        elif aug == 2:
-            input_im = TF.vflip(input_im)
-            gt = TF.vflip(gt)
-        elif aug == 3:
-            input_im = TF.rotate(input_im, 90)
-            gt = TF.rotate(gt, 90)
-        elif aug == 4:
-            input_im = TF.rotate(input_im, 180)
-            gt = TF.rotate(gt, 180)
-        elif aug == 5:
-            input_im = TF.rotate(input_im, 270)
-            gt = TF.rotate(gt, 270)
+        # elif aug == 6:
+        #     input_im = TF.rotate(input_im, 270)
+        #     gt = TF.rotate(gt, 270)
+        # if aug == 2:
+        #     input_im = TF.gaussian_blur(input_im, kernel_size=3)
+        #     gt = TF.gaussian_blur(gt, kernel_size=3)
+        # elif aug == 3:
+        #     input_im = TF.gaussian_blur(input_im, kernel_size=5)
+        #     gt = TF.gaussian_blur(gt, kernel_size=5)
+        # elif aug == 4:
+        #     input_im = TF.adjust_brightness(input_im, 0.5)
+        #     gt = TF.adjust_brightness(gt, 0.5)
+        # elif aug == 5:
+        #     input_im = TF.adjust_brightness(input_im, 2)
+        #     gt = TF.adjust_brightness(gt, 2)
+        # elif aug == 6:
+        #     input_im = TF.adjust_contrast(input_im, 0.5)
+        #     gt = TF.adjust_contrast(gt, 0.5)
+        # elif aug == 7:
+        #     input_im = TF.adjust_contrast(input_im, 2)
+        #     gt = TF.adjust_contrast(gt, 2)
 
 
         # --- Normalize the input image --- #

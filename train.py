@@ -17,6 +17,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from transweather_model import Transweather
 
+from train_psnrloss import PSNRLoss
+
 ### NOTE: add GD path ###
 # import sys
 # sys.path.append('/content/drive/MyDrive/train/data')
@@ -27,14 +29,11 @@ from transweather_model import Transweather
 # --- Parse hyper-parameters  --- #
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
 parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4, type=float)
-# parser.add_argument('-crop_size', help='Set the crop_size', default=[256, 256], nargs='+', type=int)
 parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
-# parser.add_argument('-crop_size', help='Set the crop_size', default=[1024, 1024], nargs='+', type=int)
-# parser.add_argument('-train_batch_size', help='Set the training batch size', default=16, type=int)
 parser.add_argument('-train_batch_size', help='Set the training batch size', default=10, type=int)
-# parser.add_argument('-train_batch_size', help='Set the training batch size', default=1, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
-parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
+# parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
+parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
@@ -73,6 +72,7 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 # gt_dir = "gt"
 
 train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/train"
+# train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/CutMix"
 validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/validate"
 test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/test"
 rain_L_dir = "rain_L"
@@ -159,6 +159,9 @@ writer = SummaryWriter(log_dir)
 
 count = 0
 
+### NOTE: initialization, testing parameters ###
+psnr_loss = PSNRLoss(toY=False)
+
 for epoch in range(epoch_start,num_epochs):
     psnr_list = []
     start_time = time.time()
@@ -177,9 +180,12 @@ for epoch in range(epoch_start,num_epochs):
         net.train()
         pred_image = net(input_image)
 
-        smooth_loss = F.smooth_l1_loss(pred_image, gt)
+        ### NOTE: trying different loss functions ###
+        # smooth_loss = F.smooth_l1_loss(pred_image, gt)
+        # smooth_loss = F.mse_loss(pred_image, gt)
+        smooth_loss = psnr_loss(pred_image, gt)
+        
         perceptual_loss = loss_network(pred_image, gt)
-
         loss = smooth_loss + lambda_loss*perceptual_loss 
 
         loss.backward()

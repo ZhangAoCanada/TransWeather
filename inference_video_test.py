@@ -60,7 +60,7 @@ exp_name = args.exp_name
 # model_path = "ckpt/best_512"
 video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/dust_with_water2_video.mp4"
 output_video_path = "./videos/dust_with_water2_video_result.avi"
-model_path = "ckpt/best_512"
+model_path = "ckpt/best_aug3_CutMix"
 
 video = cv2.VideoCapture(video_path)
 video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
