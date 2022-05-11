@@ -166,7 +166,6 @@ for epoch in range(epoch_start,num_epochs):
     psnr_list = []
     start_time = time.time()
     adjust_learning_rate(optimizer, epoch)
-#-------------------------------------------------------------------------------------------------------------
     for batch_id, train_data in enumerate(lbl_train_data_loader):
 
         input_image, gt = train_data
@@ -184,6 +183,9 @@ for epoch in range(epoch_start,num_epochs):
         # smooth_loss = F.smooth_l1_loss(pred_image, gt)
         # smooth_loss = F.mse_loss(pred_image, gt)
         smooth_loss = psnr_loss(pred_image, gt)
+        # smooth_loss = F.cross_entropy(pred_image, gt)
+        # smooth_loss = F.kl_div(pred_image, gt) # Kullback-Leibler divergence 
+        # smooth_loss = F.nll_loss(pred_image, gt) # negative log likelihood
         
         perceptual_loss = loss_network(pred_image, gt)
         loss = smooth_loss + lambda_loss*perceptual_loss 
