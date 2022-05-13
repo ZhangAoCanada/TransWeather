@@ -441,7 +441,10 @@ class Attention_dec(nn.Module):
         else:
             kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         k, v = kv[0], kv[1]
-        q = torch.nn.functional.interpolate(q,size= (v.shape[2],v.shape[3]))
+        # q = torch.nn.functional.interpolate(q,size= (v.shape[2],v.shape[3]))
+        s1, s2 = v.shape[2] / q.shape[2], v.shape[3] / q.shape[3]
+        q = torch.nn.functional.interpolate(q, size = (int(q.shape[2]*s1),int(q.shape[3]*s2)))
+
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
