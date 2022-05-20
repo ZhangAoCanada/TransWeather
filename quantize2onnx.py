@@ -12,7 +12,7 @@ from utils import validation, validation_val, calc_psnr, calc_ssim
 import os
 import numpy as np
 import random
-from transweather_model import Transweather
+from transweather_model_extra import Transweather
 
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -42,16 +42,16 @@ def preprocessImage(input_img):
     input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
 
     # --- Transform to tensor --- #
-    transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    input_im = transform_input(input_img)
+    # transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    # input_im = transform_input(input_img)
 
     # input_img = input_img / 255.0
     # input_img = (input_img - 0.5) / 0.5
     # transform_input = Compose([ToTensor()])
     # input_im = transform_input(input_img)
+
+    input_im = torch.from_numpy(input_img.astype(np.float32))
     return input_im
-
-
 
 
 val_batch_size = 1
@@ -90,6 +90,16 @@ net.eval()
 
 net = net.module
 
+# try quantization with quantize_dynamic
+backend = "qnnpack"
+net.qconfig = torch.quantization.get_default_qconfig(backend)
+torch.backends.quantized.engine = backend
+net_int8 = torch.quantization.quantize_dynamic(
+    net,  # the original model
+    {torch.nn.Linear},  # a set of layers to dynamically quantize
+    dtype=torch.qint8)  # the target dtype for quantized weights
+
+
 sample_img = None
 while True:
     ret, frame = video.read()
@@ -110,9 +120,11 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'])
+res = net_int8(input_img)
 
-print("[FINISHED] onnx model exported")
+torch.onnx.export(net_int8, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'])
+
+print("[FINISHED] quantized onnx model exported")
 
 
 

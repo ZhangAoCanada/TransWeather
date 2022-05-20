@@ -12,7 +12,7 @@ from utils import validation, validation_val, calc_psnr, calc_ssim
 import os
 import numpy as np
 import random
-from transweather_model import Transweather
+from transweather_model_extra import Transweather
 
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -42,13 +42,15 @@ def preprocessImage(input_img):
     input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
 
     # --- Transform to tensor --- #
-    transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    input_im = transform_input(input_img)
+    # transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    # input_im = transform_input(input_img)
 
     # input_img = input_img / 255.0
     # input_img = (input_img - 0.5) / 0.5
     # transform_input = Compose([ToTensor()])
     # input_im = transform_input(input_img)
+
+    input_im = torch.from_numpy(input_img.astype(np.float32))
     return input_im
 
 
@@ -97,6 +99,7 @@ while True:
         break
     sample_image = frame
     sample_image = cv2.resize(frame, (960, 540))
+    # sample_image = cv2.resize(frame, (640, 360))
     break
 
 if sample_image is not None:
@@ -110,34 +113,8 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'])
+# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
+torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
 
 print("[FINISHED] onnx model exported")
-
-
-
-
-# ### NOTE: start evaluation ###
-# with torch.no_grad():
-#     while True:
-#         ret, frame = video.read()
-#         if not ret:
-#             break
-#         frame = frame[:, 180:1200, :]
-#         # pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-#         input_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         input_img = preprocessImage(input_img)
-#         input_img = input_img.to(device)
-#         input_img = input_img.unsqueeze(0)
-#         print("[INFO] ", input_img.shape)
-#         pred_image = net(input_img)
-#         pred_image_cpu = pred_image[0].permute(1,2,0).cpu().numpy()
-#         pred_image_cpu = img_as_ubyte(pred_image_cpu)
-#         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
-#         image = np.concatenate((frame, pred_image_cpu[..., ::-1]), axis=1)
-#         # video_saving.write(image)
-#         cv2.imshow("image", image)
-#         if cv2.waitKey(1) == 27:
-#             break
-
 

@@ -29,17 +29,16 @@ from torchinfo import summary
 def preprocessImage(input_img):
     # Resizing image in the multiple of 16"
     wd_new, ht_new, _ = input_img.shape
-    if ht_new>wd_new and ht_new>2048:
-        wd_new = int(np.ceil(wd_new*2048/ht_new))
-        ht_new = 2048
-    elif ht_new<=wd_new and wd_new>2048:
-        ht_new = int(np.ceil(ht_new*2048/wd_new))
-        wd_new = 2048
+    if ht_new>wd_new and ht_new>1024:
+        wd_new = int(np.ceil(wd_new*1024/ht_new))
+        ht_new = 1024
+    elif ht_new<=wd_new and wd_new>1024:
+        ht_new = int(np.ceil(ht_new*1024/wd_new))
+        wd_new = 1024
     wd_new = int(16*np.ceil(wd_new/16.0))
     ht_new = int(16*np.ceil(ht_new/16.0))
     # input_img = input_img.resize((wd_new,ht_new), Image.ANTIALIAS)
-    # input_img = cv2.resize(input_img, (wd_new, ht_new), interpolation=cv2.INTER_AREA)
-    input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
+    input_img = cv2.resize(input_img, (wd_new, ht_new), interpolation=cv2.INTER_AREA)
 
     # --- Transform to tensor --- #
     transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -95,8 +94,8 @@ while True:
     ret, frame = video.read()
     if not ret:
         break
-    sample_image = frame
-    sample_image = cv2.resize(frame, (960, 540))
+    # sample_image = frame
+    sample_image = cv2.resize(frame, (640, 480))
     break
 
 if sample_image is not None:

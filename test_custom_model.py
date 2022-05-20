@@ -2,6 +2,7 @@ from plistlib import InvalidFileException
 import cv2
 import numpy as np
 import onnx
+import onnxoptimizer
 import onnxruntime as ort
 
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -24,40 +25,40 @@ def preprocessImage(input_img):
     # input_img = input_img.resize((wd_new,ht_new), Image.ANTIALIAS)
     # input_img = cv2.resize(input_img, (wd_new, ht_new), interpolation=cv2.INTER_AREA)
     input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
-    input_img = input_img.transpose((2, 0, 1))
+    # input_img = input_img.transpose((2, 0, 1))
 
     # input_img = input_img.astype(np.float32) / 255.0
     # input_img = (input_img - 0.5) / 0.5
 
-    input_img = input_img.astype(np.float32)
-    input_img = (input_img - 0.5*255) / (0.5 * 255)
+    input_img = input_img.astype(np.float32) / 255.
+    # input_img = (input_img - 0.5*255) / (0.5 * 255)
 
     input_img = np.expand_dims(input_img, axis=0)
     return input_img
 
 
-# model = onnx.load("./ckpt/transweather.onnx")
-# model = onnx.load("./ckpt/transweather_gpu.onnx")
-# onnx.checker.check_model(model)
-# print(onnx.helper.printable_graph(model.graph))
+model = onnx.load("./ckpt/transweather.onnx")
+onnx.checker.check_model(model)
 
 video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
 cap = cv2.VideoCapture(video_path)
 
-ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
+# ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
+ort_session = ort.InferenceSession("./ckpt/transweather_quant.onnx")
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
     frame = cv2.resize(frame, (960, 540))
+    # frame = cv2.resize(frame, (640, 360))
     input_img = preprocessImage(frame)
     outputs = ort_session.run(
         None,
         {"input": input_img},
     )
     pred = outputs[0][0]
-    pred = pred.transpose((1, 2, 0))
+    # pred = pred.transpose((1, 2, 0))
     print("[INFO--raw pred] ", pred.shape)
     # pred = pred * 255.0
     # pred = pred.astype(np.uint8)
