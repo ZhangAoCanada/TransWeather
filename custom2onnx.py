@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import sys
 from tabnanny import verbose
 # sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
@@ -67,15 +69,14 @@ if seed is not None:
     random.seed(seed) 
     print('Seed:\t{}'.format(seed))
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
-output_video_path = "./videos/h97cam_water_lambda00_video.avi"
+video_path = "videos/dusty_video_960_540.avi"
 model_path = "ckpt/best_psnr+lambda0.01"
 
 video = cv2.VideoCapture(video_path)
-# video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
 
 device_ids = [Id for Id in range(torch.cuda.device_count())]
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 net = Transweather()
 net = nn.DataParallel(net)
@@ -113,8 +114,8 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
+torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
+# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
 
 print("[FINISHED] onnx model exported")
 

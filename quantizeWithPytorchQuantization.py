@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import sys
 from tabnanny import verbose
 
@@ -24,10 +26,13 @@ from skimage import img_as_ubyte
 
 from torchinfo import summary
 
+### NOTE: for quantization ###
 from pytorch_quantization import nn as quant_nn
-from pytorch_quantization import quant_modules
-quant_nn.TensorQuantizer.use_fb_fake_quant = True
-quant_modules.initialize()
+from pytorch_quantization import calib
+from pytorch_quantization.tesnor_qant import QuantDescriptor
+# from pytorch_quantization import quant_modules
+# quant_nn.TensorQuantizer.use_fb_fake_quant = True
+# quant_modules.initialize()
 
 
 def preprocessImage(input_img):
@@ -46,8 +51,7 @@ def preprocessImage(input_img):
     return input_im
 
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
-output_video_path = "./videos/h97cam_water_lambda00_video.avi"
+video_path = "videos/dusty_video_960_540.avi"
 model_path = "ckpt/best_psnr+lambda0.01"
 
 video = cv2.VideoCapture(video_path)
@@ -90,7 +94,8 @@ input_img = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
 input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
+torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=14, enable_onnx_checker=False)
+# torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False,dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
 
 print("[FINISHED] onnx model exported")
 

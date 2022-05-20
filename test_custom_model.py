@@ -37,10 +37,10 @@ def preprocessImage(input_img):
     return input_img
 
 
-model = onnx.load("./ckpt/transweather.onnx")
-onnx.checker.check_model(model)
+# model = onnx.load("./ckpt/transweather.onnx")
+# onnx.checker.check_model(model)
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
+video_path = "videos/dusty_video_960_540.avi"
 cap = cv2.VideoCapture(video_path)
 
 # ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
