@@ -44,14 +44,15 @@ video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
 cap = cv2.VideoCapture(video_path)
 
 # ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
-ort_session = ort.InferenceSession("./ckpt/transweather_quant.onnx")
+# ort_session = ort.InferenceSession("./ckpt/transweather_quant.onnx")
+ort_session = ort.InferenceSession("./ckpt/transweather.quant.onnx")
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
-    frame = cv2.resize(frame, (960, 540))
-    # frame = cv2.resize(frame, (640, 360))
+    # frame = cv2.resize(frame, (960, 540))
+    frame = cv2.resize(frame, (640, 360))
     input_img = preprocessImage(frame)
     outputs = ort_session.run(
         None,

@@ -98,8 +98,8 @@ while True:
     if not ret:
         break
     sample_image = frame
-    sample_image = cv2.resize(frame, (960, 540))
-    # sample_image = cv2.resize(frame, (640, 360))
+    # sample_image = cv2.resize(frame, (960, 540))
+    sample_image = cv2.resize(frame, (640, 360))
     break
 
 if sample_image is not None:
@@ -113,8 +113,8 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
+torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
+# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
 
 print("[FINISHED] onnx model exported")
 
