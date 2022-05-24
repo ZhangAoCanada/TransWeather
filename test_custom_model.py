@@ -1,3 +1,4 @@
+from os import pardir
 from plistlib import InvalidFileException
 import cv2
 import numpy as np
@@ -22,19 +23,29 @@ def preprocessImage(input_img):
         wd_new = 2048
     wd_new = int(16*np.ceil(wd_new/16.0))
     ht_new = int(16*np.ceil(ht_new/16.0))
-    # input_img = input_img.resize((wd_new,ht_new), Image.ANTIALIAS)
-    # input_img = cv2.resize(input_img, (wd_new, ht_new), interpolation=cv2.INTER_AREA)
-    input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
-    # input_img = input_img.transpose((2, 0, 1))
 
-    # input_img = input_img.astype(np.float32) / 255.0
-    # input_img = (input_img - 0.5) / 0.5
+    # pad input_img to (wd_new, ht_new) using opencv
+    if wd_new > input_img.shape[0]:
+        pad_top = int((wd_new - input_img.shape[0]) / 2)
+        pad_bottom = wd_new - input_img.shape[0] - pad_top
+    else:
+        pad_top = 0
+        pad_bottom = 0
+    if ht_new > input_img.shape[1]:
+        pad_left = int((ht_new - input_img.shape[1]) / 2)
+        pad_right = ht_new - input_img.shape[1] - pad_left
+    else:
+        pad_left = 0
+        pad_right = 0
 
+    input_img = cv2.copyMakeBorder(input_img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+    cv2.imshow("real_input", input_img)
+
+    # input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
     input_img = input_img.astype(np.float32) / 255.
-    # input_img = (input_img - 0.5*255) / (0.5 * 255)
 
     input_img = np.expand_dims(input_img, axis=0)
-    return input_img
+    return input_img, [pad_left, pad_right, pad_top, pad_bottom]
 
 
 model = onnx.load("./ckpt/transweather.onnx")
@@ -53,7 +64,8 @@ while True:
         break
     # frame = cv2.resize(frame, (960, 540))
     frame = cv2.resize(frame, (640, 360))
-    input_img = preprocessImage(frame)
+    input_img, [pad_left, pad_right, pad_top, pad_bottom] = preprocessImage(frame)
+    print("[INFO] input_img.shape: ", input_img.shape)
     outputs = ort_session.run(
         None,
         {"input": input_img},
@@ -64,7 +76,11 @@ while True:
     # pred = pred * 255.0
     # pred = pred.astype(np.uint8)
     pred = img_as_ubyte(pred)
-    pred = cv2.resize(pred, (frame.shape[1], frame.shape[0]))
+    cv2.imshow("real_pred", pred)
+    # pred = cv2.resize(pred, (frame.shape[1], frame.shape[0]))
+    # remove copyMakeBorder to shape (frame.shape[1], frame.shape[0])
+    pred = pred[pad_top:pred.shape[0]-pad_bottom, pad_left:pred.shape[1]-pad_right]
+
     print("[INFO] ", pred.shape)
     pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR)
     img_show = np.hstack((frame, pred))

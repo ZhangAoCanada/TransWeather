@@ -42,7 +42,7 @@ def preprocessImage(input_img):
     wd_new = int(16*np.ceil(wd_new/16.0))
     ht_new = int(16*np.ceil(ht_new/16.0))
     input_img = cv2.resize(input_img, (ht_new, wd_new), interpolation=cv2.INTER_AREA)
-    input_im = torch.from_numpy(input_img.astype(np.float32))
+    input_im = torch.from_numpy(input_img.astype(np.float32) / 255.)
     return input_im
 
 
@@ -70,18 +70,39 @@ net.eval()
 
 net = net.module
 
-# torch.save(net, "./ckpt/transweather.pth")
-# print("[FINISHED] .pth model saved")
+
+
+### NOTE: dynamic quantization with pytorch natively ###
+net_int8 = torch.quantization.quantize_dynamic(net, {torch.nn.Linear, torch.nn.Conv2d, torch.nn.ConvTranspose2d}, dtype=torch.qint8)
+
+
+
 
 sample_img = None
 while True:
     ret, frame = video.read()
     if not ret:
         break
-    sample_image = frame
-    sample_image = cv2.resize(frame, (960, 540))
-    # sample_image = cv2.resize(frame, (640, 360))
-    break
+    # sample_image = frame
+    # sample_image = cv2.resize(frame, (960, 540))
+    sample_image = cv2.resize(frame, (640, 360))
+    sample_image_show = sample_image.copy()
+    sample_image = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
+    sample_image = preprocessImage(sample_image)
+    sample_image = sample_image.unsqueeze(0)
+    start = time.time()
+    pred = net_int8(sample_image)
+    # pred = net(sample_image)
+    pred = pred[0].detach().numpy()
+    pred = img_as_ubyte(pred)
+    pred = cv2.resize(pred, (sample_image_show.shape[1], sample_image_show.shape[0]))
+    pred = cv2.cvtColor(pred, cv2.COLOR_BGR2RGB)
+    image = np.concatenate([sample_image_show, pred], axis=1)
+    print("[INFO] inference time: ", time.time() - start)
+    cv2.imshow("img", image)
+    if cv2.waitKey(1) == 27: break
+    # break
+
 
 if sample_image is not None:
     print("[INFO] image shape: ", sample_image.shape)
@@ -89,11 +110,7 @@ else:
     print("[INFO] image is None")
 
 
-input_img = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
-input_img = preprocessImage(input_img)
-input_img = input_img.unsqueeze(0)
-
-torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
+torch.onnx.export(net_int8, sample_image, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
 
 print("[FINISHED] onnx model exported")
 
