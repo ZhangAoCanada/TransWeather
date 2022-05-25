@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import sys
 from tabnanny import verbose
 # sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
@@ -54,6 +56,8 @@ def preprocessImage(input_img):
     return input_im
 
 
+
+
 val_batch_size = 1
 exp_name = "ckpt"
 #set seed
@@ -65,40 +69,33 @@ if seed is not None:
     random.seed(seed) 
     print('Seed:\t{}'.format(seed))
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
-output_video_path = "./videos/h97cam_water_lambda00_video.avi"
-model_path = "ckpt/best_psnr+lambda0.01"
+# video_path = "videos/dusty_video_960_540.avi"
+# model_path = "ckpt/quantized_model.pth"
 
+# video = cv2.VideoCapture(video_path)
+
+# device_ids = [Id for Id in range(torch.cuda.device_count())]
+# # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
+
+# net = Transweather()
+# net = nn.DataParallel(net)
+# net = net.module
+
+# if device == torch.device("cpu"):
+    # net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    # print("====> model ", model_path, " loaded")
+# else:
+    # net.load_state_dict(torch.load(model_path))
+    # net.to(device)
+    # print("====> model ", model_path, " loaded")
+
+# net.eval()
+
+video_path = "videos/dusty_video_960_540.avi"
 video = cv2.VideoCapture(video_path)
-# video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
-
-device_ids = [Id for Id in range(torch.cuda.device_count())]
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-net = Transweather()
-net = nn.DataParallel(net)
-
-if device == torch.device("cpu"):
-    net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-    print("====> model ", model_path, " loaded")
-else:
-    net.load_state_dict(torch.load(model_path))
-    net.to(device)
-    print("====> model ", model_path, " loaded")
-
-net.eval()
-
-net = net.module
-
-# try quantization with quantize_dynamic
-backend = "qnnpack"
-net.qconfig = torch.quantization.get_default_qconfig(backend)
-torch.backends.quantized.engine = backend
-net_int8 = torch.quantization.quantize_dynamic(
-    net,  # the original model
-    {torch.nn.Linear},  # a set of layers to dynamically quantize
-    dtype=torch.qint8)  # the target dtype for quantized weights
-
+model_path = "ckpt/entire_quantized_model.pth"
+net = torch.load(model_path, map_location=torch.device('cpu'))
 
 sample_img = None
 while True:
@@ -107,6 +104,7 @@ while True:
         break
     sample_image = frame
     sample_image = cv2.resize(frame, (960, 540))
+    # sample_image = cv2.resize(frame, (640, 360))
     break
 
 if sample_image is not None:
@@ -120,36 +118,7 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-res = net_int8(input_img)
+torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
 
-torch.onnx.export(net_int8, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'])
-
-print("[FINISHED] quantized onnx model exported")
-
-
-
-
-# ### NOTE: start evaluation ###
-# with torch.no_grad():
-#     while True:
-#         ret, frame = video.read()
-#         if not ret:
-#             break
-#         frame = frame[:, 180:1200, :]
-#         # pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-#         input_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         input_img = preprocessImage(input_img)
-#         input_img = input_img.to(device)
-#         input_img = input_img.unsqueeze(0)
-#         print("[INFO] ", input_img.shape)
-#         pred_image = net(input_img)
-#         pred_image_cpu = pred_image[0].permute(1,2,0).cpu().numpy()
-#         pred_image_cpu = img_as_ubyte(pred_image_cpu)
-#         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
-#         image = np.concatenate((frame, pred_image_cpu[..., ::-1]), axis=1)
-#         # video_saving.write(image)
-#         cv2.imshow("image", image)
-#         if cv2.waitKey(1) == 27:
-#             break
-
+print("[FINISHED] onnx model exported")
 

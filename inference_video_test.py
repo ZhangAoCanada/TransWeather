@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import sys
 sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
 
@@ -58,9 +60,10 @@ exp_name = args.exp_name
 # video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/dusty_video1.mp4"
 # output_video_path = "./videos/dusty_video1_result.avi"
 # model_path = "ckpt/best_512"
-video_path = "/content/drive/MyDrive/DERAIN/video_data/h97cam_water_video.mp4"
+# video_path = "/content/drive/MyDrive/DERAIN/video_data/h97cam_water_video.mp4"
+video_path = "./videos/dusty_video_960_540.avi"
 output_video_path = "./videos/h97cam_water_lambda00_video.avi"
-model_path = "ckpt/best_lambda_0.0"
+model_path = "ckpt/best_psnr+lambda0.01"
 
 video = cv2.VideoCapture(video_path)
 video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
@@ -83,7 +86,7 @@ net = Transweather()
 net = nn.DataParallel(net, device_ids=device_ids)
 
 if device == torch.device("cpu"):
-    net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
+    net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 else:
     net.load_state_dict(torch.load(model_path))
     net.to(device)
@@ -98,8 +101,10 @@ with torch.no_grad():
         ret, frame = video.read()
         if not ret:
             break
-        frame = frame[:, 180:1200, :]
+        # frame = frame[:, 180:1200, :]
+        frame = cv2.resize(frame, (960, 540))
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        start = time.time()
         input_img = preprocessImage(pil_img)
         input_img = input_img.to(device)
         input_img = input_img.unsqueeze(0)
@@ -107,7 +112,10 @@ with torch.no_grad():
         pred_image_cpu = pred_image[0].permute(1,2,0).cpu().numpy()
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))
+        print("[total time]: ", time.time() - start)
         image = np.concatenate((frame, pred_image_cpu[..., ::-1]), axis=1)
-        video_saving.write(image)
+        # video_saving.write(image)
+        cv2.imshow("img", image)
+        if cv2.waitKey(1) == 27: break
 
 

@@ -8,12 +8,14 @@ import torch
 import argparse
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from train_data_functions import TrainData
+from train_data_functions_custom import TrainData
 from val_data_functions import ValData
 from utils import validation, validation_val, calc_psnr, calc_ssim
 import os
 import numpy as np
 import random
+import cv2
+# from transweather_model_extra import Transweather
 from transweather_model_extra import Transweather
 
 from PIL import Image
@@ -32,16 +34,21 @@ import torchvision
 from torchvision import transforms
 from pytorch_quantization import nn as quant_nn
 from pytorch_quantization import calib
-from pytorch_quantization.tesnor_qant import QuantDescriptor
+from pytorch_quantization.tensor_quant import QuantDescriptor
 
 from absl import logging
 logging.set_verbosity(logging.FATAL)
 
 quant_desc_input = QuantDescriptor(calib_method='histogram')
+# quant_desc_input = QuantDescriptor()
 quant_nn.QuantConv2d.set_default_quant_desc_input(quant_desc_input)
+quant_nn.QuantConvTranspose2d.set_default_quant_desc_input(quant_desc_input)
 quant_nn.QuantLinear.set_default_quant_desc_input(quant_desc_input)
 
 from pytorch_quantization import quant_modules
+
+quant_nn.TensorQuantizer.use_fb_fake_quant = True
+
 quant_modules.initialize()
 
 
@@ -62,7 +69,7 @@ def preprocessImage(input_img):
     return input_im
 
 ### NOTE: create data loader ###
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/train"
+train_data_dir = "/home/ubuntu/Desktop/work_space/ao/DATA/train"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"
@@ -70,6 +77,7 @@ crop_size = [512, 512]
 batch_size = 1
 data_loader = DataLoader(TrainData(crop_size, train_data_dir, rain_L_dir, rain_H_dir, gt_dir), batch_size=batch_size, shuffle=True, num_workers=4)
 
+print("[====> INFO] data_loader len: ", len(data_loader))
 
 
 video_path = "videos/dusty_video_960_540.avi"
@@ -109,7 +117,8 @@ def collect_stats(model, data_loader, num_batches):
                 module.disable()
 
     for i, (image, _) in tqdm(enumerate(data_loader), total=num_batches):
-        model(image.cuda())
+        # model(image.cuda())
+        model(image)
         if i >= num_batches:
             break
 
@@ -128,20 +137,22 @@ def compute_amax(model, **kwargs):
         if isinstance(module, quant_nn.TensorQuantizer):
             if module._calibrator is not None:
                 if isinstance(module._calibrator, calib.MaxCalibrator):
-                    module.load_calib_amax()
+                    module.load_calib_amax(strict=False)
                 else:
-                    module.load_calib_amax(**kwargs)
-            # print(F"{name:40}: {module}")
+                    module.load_calib_amax(**kwargs, strict=False)
+            print(F"{name:40}: {module}")
     # model.cuda()
 
 with torch.no_grad():
-    collect_stats(net, data_loader, num_batches=2)
-    compute_amax(net, method='percentile', percentile=99.99)
+    collect_stats(net, data_loader, num_batches=10)
+    # compute_amax(net, method='percentile', percentile=99.99)
+    compute_amax(net, method='entropy')
+    # compute_amax(net, method='mse')
 
+torch.save(net, "./ckpt/entire_quantized_model.pth")
 torch.save(net.state_dict(), "./ckpt/quantized_model.pth")
 
-
-
+print("[FINISHED] .pt model saved")
 
 sample_img = None
 while True:
@@ -163,9 +174,7 @@ input_img = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
 input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=14)
-# torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=14, enable_onnx_checker=False)
-# torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False,dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
+torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
 
 print("[FINISHED] onnx model exported")
 
