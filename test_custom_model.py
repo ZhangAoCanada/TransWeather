@@ -10,6 +10,8 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 from skimage import img_as_ubyte
 
+import time
+
 
 def preprocessImage(input_img):
     # Resizing image in the multiple of 16"
@@ -49,15 +51,19 @@ def preprocessImage(input_img):
 
 
 model = onnx.load("./ckpt/transweather.onnx")
+# model = onnx.load("./ckpt/transweather.quant.onnx")
+# model = onnx.load("./ckpt/transweather_quant.onnx")
 onnx.checker.check_model(model)
 
 video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
 cap = cv2.VideoCapture(video_path)
 
-# ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
+ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
 # ort_session = ort.InferenceSession("./ckpt/transweather_quant.onnx")
-ort_session = ort.InferenceSession("./ckpt/transweather.quant.onnx")
+# ort_session = ort.InferenceSession("./ckpt/transweather.quant.onnx")
 
+total_inference_time = 0
+count = 0
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -65,26 +71,25 @@ while True:
     # frame = cv2.resize(frame, (960, 540))
     frame = cv2.resize(frame, (640, 360))
     input_img, [pad_left, pad_right, pad_top, pad_bottom] = preprocessImage(frame)
-    print("[INFO] input_img.shape: ", input_img.shape)
+    start = time.time()
     outputs = ort_session.run(
         None,
         {"input": input_img},
     )
     pred = outputs[0][0]
-    # pred = pred.transpose((1, 2, 0))
-    print("[INFO--raw pred] ", pred.shape)
+    total_inference_time += time.time() - start
+    count += 1
+    print("[INFO] average inference time: ", total_inference_time / count)
     # pred = pred * 255.0
     # pred = pred.astype(np.uint8)
     pred = img_as_ubyte(pred)
-    cv2.imshow("real_pred", pred)
     # pred = cv2.resize(pred, (frame.shape[1], frame.shape[0]))
     # remove copyMakeBorder to shape (frame.shape[1], frame.shape[0])
     pred = pred[pad_top:pred.shape[0]-pad_bottom, pad_left:pred.shape[1]-pad_right]
 
-    print("[INFO] ", pred.shape)
     pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR)
     img_show = np.hstack((frame, pred))
-    # img_show = cv2.resize(img_show, None, fx=0.5, fy=0.5)
+    img_show = cv2.resize(img_show, None, fx=0.5, fy=0.5)
     cv2.imshow("pred", img_show)
     if cv2.waitKey(1) == 27:
         break

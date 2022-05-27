@@ -66,9 +66,9 @@ else:
     net.to(device)
     print("====> model ", model_path, " loaded")
 
-net.eval()
-
 net = net.module
+
+net.eval()
 
 # torch.save(net, "./ckpt/transweather.pth")
 # print("[FINISHED] .pth model saved")
@@ -79,8 +79,8 @@ while True:
     if not ret:
         break
     sample_image = frame
-    sample_image = cv2.resize(frame, (960, 540))
-    # sample_image = cv2.resize(frame, (640, 360))
+    # sample_image = cv2.resize(frame, (960, 540))
+    sample_image = cv2.resize(frame, (640, 360))
     break
 
 if sample_image is not None:
@@ -93,7 +93,7 @@ input_img = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
 input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
+torch.onnx.export(net, input_img, "./ckpt/transweather_quant.onnx", verbose=True, do_constant_folding=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
 
 print("[FINISHED] onnx model exported")
 

@@ -114,7 +114,7 @@ input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
 torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
-# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, dynamic_axes={'input': {0, 'batch_size'}, 'output': {0, 'batch_size'}})
+# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, export_params=True, do_constant_folding=True, input_names=['input'], output_names=['output'], opset_version=13)
 
 print("[FINISHED] onnx model exported")
 

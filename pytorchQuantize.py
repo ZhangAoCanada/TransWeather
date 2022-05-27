@@ -74,6 +74,7 @@ net = net.module
 
 ### NOTE: dynamic quantization with pytorch natively ###
 net_int8 = torch.quantization.quantize_dynamic(net, {torch.nn.Linear, torch.nn.Conv2d, torch.nn.ConvTranspose2d}, dtype=torch.qint8)
+# net_int8 = torch.quantization.quantize_dynamic(net, dtype=torch.qint8)
 
 
 
@@ -99,9 +100,10 @@ while True:
     pred = cv2.cvtColor(pred, cv2.COLOR_BGR2RGB)
     image = np.concatenate([sample_image_show, pred], axis=1)
     print("[INFO] inference time: ", time.time() - start)
-    cv2.imshow("img", image)
-    if cv2.waitKey(1) == 27: break
+    # cv2.imshow("img", image)
+    # if cv2.waitKey(1) == 27: break
     # break
+    break
 
 
 if sample_image is not None:
@@ -110,7 +112,8 @@ else:
     print("[INFO] image is None")
 
 
-torch.onnx.export(net_int8, sample_image, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13, enable_onnx_checker=False)
+# torch.onnx.export(net_int8, sample_image, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11, enable_onnx_checker=False)
+torch.onnx.export(net_int8, sample_image, "./ckpt/transweather_quant.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=13)
 
 print("[FINISHED] onnx model exported")
 
