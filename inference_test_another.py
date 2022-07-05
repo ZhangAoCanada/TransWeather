@@ -39,7 +39,7 @@ exp_name = args.exp_name
 # image_dir = "data"
 # gt_dir = "gt"
 
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/test_specific"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test_specific"
 sub_dir_names = ["dawn_cloudy", "night_outdoors", "sunny_outdoors", "underground"]
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
@@ -65,8 +65,8 @@ net = nn.DataParallel(net, device_ids=device_ids)
 if device == torch.device("cpu"):
     net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load("ckpt/best_512"))
-    print("-------- loading best_512 --------")
+    net.load_state_dict(torch.load("ckpt/best_withoutEnhanceData"))
+    print("-------- loading best_withoutEnhancedData --------")
     net.to(device)
 
 net.eval()

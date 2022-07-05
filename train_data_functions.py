@@ -1,7 +1,7 @@
 from pkg_resources import invalid_marker
 import torch.utils.data as data
 from PIL import Image
-from random import randrange
+from random import randrange, shuffle
 from torchvision.transforms import Compose, ToTensor, Normalize
 import re
 from PIL import ImageFile
@@ -19,8 +19,18 @@ class TrainData(data.Dataset):
         super().__init__()
         self.input_names_L, self.gt_names_L = self.getRainLImageNames(train_data_dir, rain_L_dir, gt_dir)
         self.input_names_H, self.gt_names_H = self.getRainHImageNames(train_data_dir, rain_H_dir, gt_dir)
-        self.input_names = self.input_names_L + self.input_names_H
-        self.gt_names = self.gt_names_L + self.gt_names_H
+        self.input_names = self.input_names_L + self.input_names_H 
+        self.gt_names = self.gt_names_L + self.gt_names_H 
+        ### NOTE: add enchancement training data ###
+        self.training_enhance_percentage = 0.2
+        self.gt_names_enhance = self.gt_names_L.copy()
+        shuffle(self.gt_names_enhance)
+        self.gt_names_enhance = self.gt_names_enhance[:int(len(self.input_names) * self.training_enhance_percentage)]
+        print("[INFO] len of trainData without enhancement: {}".format(len(self.input_names)))
+        print("[INFO] Training gt data for enhancement: {}".format(len(self.gt_names_enhance)))
+        self.input_names += self.gt_names_enhance
+        self.gt_names += self.gt_names_enhance
+        ############################################
         self.crop_size = crop_size
         self.train_data_dir = train_data_dir
 
@@ -80,6 +90,8 @@ class TrainData(data.Dataset):
 
         CutMix_h, CutMix_w = int(gt_img_array.shape[0] * portion), int(gt_img_array.shape[1] * portion)
         CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
+        # while CutMix_start_h + CutMix_h > gt_img_array.shape[0] or CutMix_start_w + CutMix_w > gt_img_array.shape[1] or CutMix_start_h + CutMix_h > target_gt_img_array.shape[0] or CutMix_start_w + CutMix_w > target_gt_img_array.shape[1]:
+        #     CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
         gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
         input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
         input_img = Image.fromarray(input_img_array)
@@ -88,7 +100,7 @@ class TrainData(data.Dataset):
 
     def get_images(self, index):
         # --- NOTE: data augmentation --- #
-        aug = random.randint(0, 1)
+        aug = random.randint(0, 6)
         
         crop_width, crop_height = self.crop_size
         input_name = self.input_names[index]
@@ -130,21 +142,21 @@ class TrainData(data.Dataset):
         gt = transform_gt(gt_crop_img)
 
         # --- TODO: data augmentation --- #
-        # if aug == 2:
-        #     input_im = TF.hflip(input_im)
-        #     gt = TF.hflip(gt)
-        # elif aug == 3:
-        #     input_im = TF.vflip(input_im)
-        #     gt = TF.vflip(gt)
-        # elif aug == 4:
-        #     input_im = TF.rotate(input_im, 90)
-        #     gt = TF.rotate(gt, 90)
-        # if aug == 5:
-        #     input_im = TF.rotate(input_im, 180)
-        #     gt = TF.rotate(gt, 180)
-        # elif aug == 6:
-        #     input_im = TF.rotate(input_im, 270)
-        #     gt = TF.rotate(gt, 270)
+        if aug == 2:
+            input_im = TF.hflip(input_im)
+            gt = TF.hflip(gt)
+        elif aug == 3:
+            input_im = TF.vflip(input_im)
+            gt = TF.vflip(gt)
+        elif aug == 4:
+            input_im = TF.rotate(input_im, 90)
+            gt = TF.rotate(gt, 90)
+        if aug == 5:
+            input_im = TF.rotate(input_im, 180)
+            gt = TF.rotate(gt, 180)
+        elif aug == 6:
+            input_im = TF.rotate(input_im, 270)
+            gt = TF.rotate(gt, 270)
         # if aug == 2:
         #     input_im = TF.gaussian_blur(input_im, kernel_size=3)
         #     gt = TF.gaussian_blur(gt, kernel_size=3)

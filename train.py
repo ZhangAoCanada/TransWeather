@@ -71,10 +71,9 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 # image_dir = "data"
 # gt_dir = "gt"
 
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/train"
-# train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/CutMix"
-validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/validate"
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220325/test"
+train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/train"
+validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/validate"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/test"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"
@@ -112,8 +111,10 @@ try:
         net.load_state_dict(torch.load('./{}/latest'.format(exp_name)))
         print("----- last trained loaded -----")
     else:
-        net.load_state_dict(torch.load('./{}/origin_pretrained'.format(exp_name)))
-        print("----- original trained loaded -----")
+        # net.load_state_dict(torch.load('./{}/origin_pretrained'.format(exp_name)))
+        # print("----- original trained loaded -----")
+        net.load_state_dict(torch.load('./{}/pretrained_on_data2070'.format(exp_name)))
+        print("----- pre-trained with DATA2070images loaded -----")
 except:
     print('--- no weight loaded ---')
 

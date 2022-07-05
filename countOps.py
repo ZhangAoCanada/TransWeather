@@ -1,5 +1,6 @@
 import sys
-from tabnanny import verbose # sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
+from tabnanny import verbose
+# sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
 
 import time
 import torch
@@ -24,6 +25,9 @@ from skimage import img_as_ubyte
 
 from torchinfo import summary
 
+# from pthflops import count_ops
+# from thop import profile
+from ptflops import get_model_complexity_info
 
 def preprocessImage(input_img):
     # Resizing image in the multiple of 16"
@@ -68,7 +72,7 @@ if seed is not None:
 
 video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
 output_video_path = "./videos/h97cam_water_lambda00_video.avi"
-model_path = "ckpt/best_CombinedData"
+model_path = "ckpt/best_psnr+lambda0.01"
 
 video = cv2.VideoCapture(video_path)
 # video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
@@ -87,9 +91,9 @@ else:
     net.to(device)
     print("====> model ", model_path, " loaded")
 
-net.eval()
-
 net = net.module
+
+net.eval()
 
 sample_img = None
 while True:
@@ -112,8 +116,13 @@ input_img = preprocessImage(input_img)
 input_img = input_img.unsqueeze(0)
 # input_img = input_img.to(device)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
-# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, export_params=True, do_constant_folding=True, input_names=['input'], output_names=['output'], opset_version=13)
+# summary(net)
 
-print("[FINISHED] onnx model exported")
+# count_ops(net, input_img)
+# macs, params = profile(net, inputs=(input_img,))
+
+macs, params = get_model_complexity_info(net, (368, 640, 3), as_strings=True,
+                                           print_per_layer_stat=True, verbose=True)
+print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
+print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 

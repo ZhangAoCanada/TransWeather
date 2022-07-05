@@ -11,6 +11,7 @@ import cv2
 from skimage.measure import compare_psnr, compare_ssim
 import pdb
 from skimage import img_as_ubyte
+
 def calc_psnr(im1, im2):
 
     im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
@@ -111,6 +112,37 @@ def validation_val(net, val_data_loader, device, exp_name, category, save_tag=Fa
     avr_psnr = sum(psnr_list) / len(psnr_list)
     avr_ssim = sum(ssim_list) / len(ssim_list)
     return avr_psnr, avr_ssim
+
+
+def validationDistillation(net, val_data_loader, device, exp_name, save_tag=False):
+
+    psnr_list = []
+    ssim_list = []
+
+    for batch_id, val_data in enumerate(val_data_loader):
+
+        with torch.no_grad():
+            input_im, gt, imgid = val_data
+            input_im = input_im.to(device)
+            gt = gt.to(device)
+            pred_image = net(input_im)
+            pred_image = pred_image[-1]
+
+        # --- Calculate the average PSNR --- #
+        psnr_list.extend(calc_psnr(pred_image, gt))
+
+        # --- Calculate the average SSIM --- #
+        ssim_list.extend(calc_ssim(pred_image, gt))
+
+        # --- Save image --- #
+        if save_tag:
+            # print()
+            save_image(pred_image, imgid, exp_name)
+
+    avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
+    avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
+    return avr_psnr, avr_ssim
+
 
 def save_image(pred_image, image_name, exp_name, category):
     pred_image_images = torch.split(pred_image, 1, dim=0)

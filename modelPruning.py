@@ -24,9 +24,11 @@ from skimage import img_as_ubyte
 
 from torchinfo import summary
 
+import torch.nn.utils.prune as prune
+
 
 def preprocessImage(input_img):
-    # Resizing image in the multiple of 16"
+    input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2RGB)
     wd_new, ht_new, _ = input_img.shape
     if ht_new>wd_new and ht_new>2048:
         wd_new = int(np.ceil(wd_new*2048/ht_new))
@@ -44,12 +46,13 @@ def preprocessImage(input_img):
     # transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     # input_im = transform_input(input_img)
 
-    # input_img = input_img / 255.0
-    # input_img = (input_img - 0.5) / 0.5
+    input_img = input_img.astype(np.float32) / 255.0
+    input_img = (input_img - 0.5) / 0.5
     # transform_input = Compose([ToTensor()])
     # input_im = transform_input(input_img)
 
-    input_im = torch.from_numpy(input_img.astype(np.float32))
+    input_im = torch.from_numpy(input_img)
+    input_im = input_im.unsqueeze(0)
     return input_im
 
 
@@ -91,6 +94,16 @@ net.eval()
 
 net = net.module
 
+
+# prune each module in network
+parameters_to_prune = []
+# for name, module in net.named_modules():
+for module in net.modules():
+    if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear) or isinstance(module, torch.nn.ConvTranspose2d):
+        prune.l1_unstructured(module, name='weight', amount=0.5)
+        prune.remove(module, name='weight')
+
+
 sample_img = None
 while True:
     ret, frame = video.read()
@@ -107,13 +120,9 @@ else:
     print("[INFO] image is None")
 
 
-input_img = cv2.cvtColor(sample_image, cv2.COLOR_BGR2RGB)
-input_img = preprocessImage(input_img)
-input_img = input_img.unsqueeze(0)
-# input_img = input_img.to(device)
+input_img = preprocessImage(sample_image)
 
-torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
-# torch.onnx.export(net, input_img, "./ckpt/transweather.onnx", verbose=True, export_params=True, do_constant_folding=True, input_names=['input'], output_names=['output'], opset_version=13)
+torch.onnx.export(net, input_img, "./ckpt/transweather_pruning.onnx", verbose=True, input_names=['input'], output_names=['output'], opset_version=11)
 
 print("[FINISHED] onnx model exported")
 
