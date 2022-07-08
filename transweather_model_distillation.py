@@ -630,7 +630,7 @@ class Tenc(EncoderTransformer):
     def __init__(self, **kwargs):
         super(Tenc, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[1, 1, 2, 2], sr_ratios=[4, 2, 2, 1],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[1, 1, 1, 1], sr_ratios=[4, 2, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 class Tdec(DecoderTransformer):
@@ -827,4 +827,9 @@ class TransweatherStudent(nn.Module):
 
         clean = self.active(self.clean(x))
 
-        return x1[3], x2[-1], x, clean
+        pred_list = []
+        pred_list += x1
+        pred_list += x2
+        pred_list += [x]
+        pred_list += [clean]
+        return pred_list

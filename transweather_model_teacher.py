@@ -837,7 +837,12 @@ class TransweatherTeacher(nn.Module):
 
         clean = self.active(self.clean(x))
 
-        return x1[3], x2[-1], x, clean
+        pred_list = []
+        pred_list += x1
+        pred_list += x2
+        pred_list += [x]
+        pred_list += [clean]
+        return pred_list
 
     def load(self, path):
         """

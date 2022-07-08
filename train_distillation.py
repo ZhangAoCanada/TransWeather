@@ -196,31 +196,27 @@ for epoch in range(epoch_start,num_epochs):
         optimizer.zero_grad()
 
         # --- Forward + Backward + Optimize --- #
-        encoder_teacher, decoder_teacher, conv_teacher, pred_image_teacher = net_teacher(input_image)
-        encoder_student, decoder_student, conv_student, pred_image_student = net_student(input_image)
+        pred_list_teacher = net_teacher(input_image)
+        pred_list_student = net_student(input_image)
+
+        assert(len(pred_list_student) == len(pred_list_teacher))
+        assert(len(pred_list_student) > 0)
 
         # --- Model distillation --- #
-        encoder_loss = F.smooth_l1_loss(encoder_student, encoder_teacher)
-        decoder_loss = F.smooth_l1_loss(decoder_student, decoder_teacher)
-        conv_loss = F.smooth_l1_loss(conv_student, conv_teacher)
-        pred_image_loss = F.smooth_l1_loss(pred_image_student, pred_image_teacher)
-        distillation_loss = encoder_loss + decoder_loss + conv_loss + pred_image_loss
-
-        # encoder_loss = psnr_loss(encoder_student, encoder_teacher)
-        # decoder_loss = psnr_loss(decoder_student, decoder_teacher)
-        # conv_loss = psnr_loss(conv_student, conv_teacher)
-        # pred_image_loss = psnr_loss(pred_image_student, pred_image_teacher)
-        # distillation_loss = encoder_loss + decoder_loss + conv_loss + pred_image_loss
+        distillation_loss = 0.0
+        for i in range(len(pred_list_student)):
+            distillation_loss += F.smooth_l1_loss(pred_list_student[i], pred_list_teacher[i])
+            # distillation_loss += psnr_loss(pred_list_student[i], pred_list_teacher[i])
 
         # --- NOTE: trying different loss functions --- #
         # smooth_loss = F.smooth_l1_loss(pred_image, gt)
         # smooth_loss = F.mse_loss(pred_image, gt)
-        smooth_loss = psnr_loss(pred_image_student, gt)
+        smooth_loss = psnr_loss(pred_list_student[-1], gt)
         # smooth_loss = F.cross_entropy(pred_image, gt)
         # smooth_loss = F.kl_div(pred_image, gt) # Kullback-Leibler divergence 
         # smooth_loss = F.nll_loss(pred_image, gt) # negative log likelihood
         
-        perceptual_loss = loss_network(pred_image_student, gt)
+        perceptual_loss = loss_network(pred_list_student[-1], gt)
         pred_loss = smooth_loss + lambda_loss*perceptual_loss 
 
         # --- combine... --- #
@@ -230,7 +226,7 @@ for epoch in range(epoch_start,num_epochs):
         optimizer.step()
 
         # --- To calculate average PSNR --- #
-        psnr_list.extend(to_psnr(pred_image_student, gt))
+        psnr_list.extend(to_psnr(pred_list_student[-1], gt))
 
         count += 1
         writer.add_scalar("Loss/train", loss.item(), count)
