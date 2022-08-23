@@ -11,7 +11,8 @@ from utils import validation, validation_val, calc_psnr, calc_ssim
 import os
 import numpy as np
 import random
-from transweather_model_extra import Transweather
+# from transweather_model_extra import Transweather
+from transweather_model_distillation_customized import TransweatherStudent
 
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -66,9 +67,9 @@ if seed is not None:
     random.seed(seed) 
     print('Seed:\t{}'.format(seed))
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
-output_video_path = "./videos/h97cam_water_lambda00_video.avi"
-model_path = "ckpt/best_CombinedData"
+video_path = "/mnt/d/DATASET/data_capture/CaptureFiles/h97camera_videos/2022_4_12_14_3_53__video.avi"
+output_video_path = "./videos/sample.avi"
+model_path = "ckpt/best_StudentModel6.1"
 
 video = cv2.VideoCapture(video_path)
 # video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
@@ -76,14 +77,14 @@ video = cv2.VideoCapture(video_path)
 device_ids = [Id for Id in range(torch.cuda.device_count())]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-net = Transweather()
+net = TransweatherStudent()
 net = nn.DataParallel(net)
 
 if device == torch.device("cpu"):
-    net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'))["state_dict"])
     print("====> model ", model_path, " loaded")
 else:
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path)["state_dict"])
     net.to(device)
     print("====> model ", model_path, " loaded")
 
@@ -98,7 +99,7 @@ while True:
         break
     sample_image = frame
     # sample_image = cv2.resize(frame, (960, 540))
-    sample_image = cv2.resize(frame, (640, 360))
+    sample_image = cv2.resize(frame, (640, 368))
     break
 
 if sample_image is not None:

@@ -10,6 +10,7 @@ import numpy as np
 import random
 from transweather_model import Transweather
 
+
 # --- Parse hyper-parameters  --- #
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)

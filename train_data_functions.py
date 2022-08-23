@@ -90,8 +90,8 @@ class TrainData(data.Dataset):
 
         CutMix_h, CutMix_w = int(gt_img_array.shape[0] * portion), int(gt_img_array.shape[1] * portion)
         CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
-        # while CutMix_start_h + CutMix_h > gt_img_array.shape[0] or CutMix_start_w + CutMix_w > gt_img_array.shape[1] or CutMix_start_h + CutMix_h > target_gt_img_array.shape[0] or CutMix_start_w + CutMix_w > target_gt_img_array.shape[1]:
-        #     CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
+        while CutMix_start_h + CutMix_h > gt_img_array.shape[0] or CutMix_start_w + CutMix_w > gt_img_array.shape[1] or CutMix_start_h + CutMix_h > target_gt_img_array.shape[0] or CutMix_start_w + CutMix_w > target_gt_img_array.shape[1]:
+            CutMix_start_h, CutMix_start_w = random.randint(0, gt_img_array.shape[0] - CutMix_h), random.randint(0, gt_img_array.shape[1] - CutMix_w)
         gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_gt_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
         input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w] = target_input_img_array[CutMix_start_h:CutMix_start_h + CutMix_h, CutMix_start_w:CutMix_start_w + CutMix_w]
         input_img = Image.fromarray(input_img_array)

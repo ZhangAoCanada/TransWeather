@@ -10,7 +10,8 @@ import onnx
 from onnxsim import simplify
 import onnxoptimizer
 onnx_model = onnx.load("./ckpt/transweather.onnx")
-model_simp, check = simplify(onnx_model)
-assert check, "Simplified ONNX model could not be validated"
+# model_simp, check = simplify(onnx_model)
+# assert check, "Simplified ONNX model could not be validated"
+model_simp = onnx_model
 new_model = onnxoptimizer.optimize(model_simp)
 onnx.save(new_model, "./ckpt/transweather_simp_opt.onnx")

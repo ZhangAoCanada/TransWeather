@@ -67,17 +67,17 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-# train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/train"
-# validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/validate"
-# test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/test"
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/train"
-validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/validate"
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test"
+train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/train"
+validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/validate"
+test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/test"
+# train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/train"
+# validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/validate"
+# test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"
-# teacher_model_path = './{}/best_combinedData'.format(exp_name)
-teacher_model_path = './{}/best_enhancedData'.format(exp_name)
+teacher_model_path = './{}/best_combinedData'.format(exp_name)
+# teacher_model_path = './{}/best_enhancedData'.format(exp_name)
 
 # --- Gpu device --- #
 device_ids = [Id for Id in range(torch.cuda.device_count())]
@@ -205,8 +205,8 @@ for epoch in range(epoch_start,num_epochs):
         # --- Model distillation --- #
         distillation_loss = 0.0
         for i in range(len(pred_list_student)):
-            distillation_loss += F.smooth_l1_loss(pred_list_student[i], pred_list_teacher[i])
-            # distillation_loss += psnr_loss(pred_list_student[i], pred_list_teacher[i])
+            # distillation_loss += F.smooth_l1_loss(pred_list_student[i], pred_list_teacher[i])
+            distillation_loss += psnr_loss(pred_list_student[i], pred_list_teacher[i])
 
         # --- NOTE: trying different loss functions --- #
         # smooth_loss = F.smooth_l1_loss(pred_image, gt)

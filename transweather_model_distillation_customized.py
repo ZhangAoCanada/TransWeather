@@ -13,6 +13,8 @@ from abc import ABCMeta, abstractmethod
 # from mmcv.cnn import ConvModule
 import pdb
 
+from torchvision.transforms import Compose, ToTensor, Normalize
+
 class EncoderTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
@@ -664,28 +666,34 @@ class convprojection(nn.Module):
         res32x = self.convd32x(x2[0])
 
         if x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
-            p2d = (0,-1,0,-1)
-            res32x = F.pad(res32x,p2d,"constant",0)
+            # p2d = (0,-1,0,-1)
+            # res32x = F.pad(res32x,p2d,"constant",0)
+            res32x = res32x[:, :, :-1, :-1]
             
         elif x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] == res32x.shape[2]:
-            p2d = (0,-1,0,0)
-            res32x = F.pad(res32x,p2d,"constant",0)
+            # p2d = (0,-1,0,0)
+            # res32x = F.pad(res32x,p2d,"constant",0)
+            res32x = res32x[:, :, :, :-1]
         elif x1[3].shape[3] == res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
-            p2d = (0,0,0,-1)
-            res32x = F.pad(res32x,p2d,"constant",0)
+            # p2d = (0,0,0,-1)
+            # res32x = F.pad(res32x,p2d,"constant",0)
+            res32x  = res32x[:, :, :-1, :]
 
         res16x = res32x + x1[3]
         res16x = self.convd16x(res16x) 
 
         if x1[2].shape[3] != res16x.shape[3] and x1[2].shape[2] != res16x.shape[2]:
-            p2d = (0,-1,0,-1)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,-1,0,-1)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :, :-1, :-1]
         elif x1[2].shape[3] != res16x.shape[3] and x1[2].shape[2] == res16x.shape[2]:
-            p2d = (0,-1,0,0)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,-1,0,0)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :, :, :-1]
         elif x1[2].shape[3] == res16x.shape[3] and x1[2].shape[2] != res16x.shape[2]:
-            p2d = (0,0,0,-1)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,0,0,-1)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :, :-1, :]
 
         res8x = self.dense_4(res16x) + x1[2]
         res8x = self.convd8x(res8x) 
@@ -734,14 +742,17 @@ class convprojection_base(nn.Module):
         res16x = self.convd16x(x1[3]) 
 
         if x1[2].shape[3] != res16x.shape[3] and x1[2].shape[2] != res16x.shape[2]:
-            p2d = (0,-1,0,-1)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,-1,0,-1)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :-1, :, :-1]
         elif x1[2].shape[3] != res16x.shape[3] and x1[2].shape[2] == res16x.shape[2]:
-            p2d = (0,-1,0,0)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,-1,0,0)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :-1, :, :]
         elif x1[2].shape[3] == res16x.shape[3] and x1[2].shape[2] != res16x.shape[2]:
-            p2d = (0,0,0,-1)
-            res16x = F.pad(res16x,p2d,"constant",0)
+            # p2d = (0,0,0,-1)
+            # res16x = F.pad(res16x,p2d,"constant",0)
+            res16x = res16x[:, :, :, :-1]
 
         res8x = self.dense_4(res16x) + x1[2]
         res8x = self.convd8x(res8x) 
@@ -816,8 +827,20 @@ class TransweatherStudent(nn.Module):
         
         if path is not None:
             self.load(path)
+    
+    def preprocess(self, x):
+        x = x.permute(0,3,1,2)
+        transform_input = Compose([Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        x = transform_input(x)
+        return x
+
+    def postprocess(self, x):
+        x = x.permute(0,2,3,1)
+        return x
+
 
     def forward(self, x):
+        x = self.preprocess(x)
 
         x1 = self.Tenc(x)
 
@@ -827,9 +850,13 @@ class TransweatherStudent(nn.Module):
 
         clean = self.active(self.clean(x))
 
-        pred_list = []
-        pred_list += x1
-        pred_list += x2
-        pred_list += [x]
-        pred_list += [clean]
-        return pred_list
+        clean = self.postprocess(clean)
+        
+        return clean
+
+        # pred_list = []
+        # pred_list += x1
+        # pred_list += x2
+        # pred_list += [x]
+        # pred_list += [clean]
+        # return pred_list

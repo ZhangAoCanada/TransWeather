@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import onnx
 import onnxruntime as ort
+import time
 
 from torchvision.transforms import Compose, ToTensor, Normalize
 
@@ -41,30 +42,35 @@ def preprocessImage(input_img):
 # onnx.checker.check_model(model)
 # print(onnx.helper.printable_graph(model.graph))
 
-video_path = "/home/ao/tmp/clip_videos/h97cam_water_video.mp4"
+video_path = "/mnt/d/DATASET/data_capture/CaptureFiles/h97camera_videos/2022_4_12_14_3_53__video.avi"
 cap = cv2.VideoCapture(video_path)
 
-ort_session = ort.InferenceSession("./ckpt/transweather.onnx")
+ort_session = ort.InferenceSession("./ckpt/transweather_simp_opt.onnx")
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
-    frame = cv2.resize(frame, (960, 540))
-    input_img = preprocessImage(frame)
+    frame = cv2.resize(frame, (640, 368))
+    input_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    input_img = input_img.astype(np.float32) / 255.0
+    input_img = np.expand_dims(input_img, axis=0)
+    # input_img = preprocessImage(frame)
+    start_time = time.time()
     outputs = ort_session.run(
         None,
         {"input": input_img},
     )
     pred = outputs[0][0]
-    pred = pred.transpose((1, 2, 0))
-    print("[INFO--raw pred] ", pred.shape)
+    # pred = pred.transpose((1, 2, 0))
+    print("[INFO--raw pred] ", pred.shape, ", inference time: ", time.time() - start_time)
     # pred = pred * 255.0
     # pred = pred.astype(np.uint8)
     pred = img_as_ubyte(pred)
-    pred = cv2.resize(pred, (frame.shape[1], frame.shape[0]))
-    print("[INFO] ", pred.shape)
     pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR)
+    # pred = cv2.resize(pred, (frame.shape[1], frame.shape[0]))
+    # print("[INFO] ", pred.shape)
+    # pred = cv2.cvtColor(pred, cv2.COLOR_RGB2BGR)
     img_show = np.hstack((frame, pred))
     # img_show = cv2.resize(img_show, None, fx=0.5, fy=0.5)
     cv2.imshow("pred", img_show)
