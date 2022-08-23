@@ -1,3 +1,7 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
+
 import time
 import torch
 import argparse
@@ -31,7 +35,7 @@ from train_psnrloss import PSNRLoss
 parser = argparse.ArgumentParser(description='Hyper-parameters for network')
 parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4, type=float)
 parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
-parser.add_argument('-train_batch_size', help='Set the training batch size', default=8, type=int)
+parser.add_argument('-train_batch_size', help='Set the training batch size', default=10, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
 # parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
 parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
@@ -40,6 +44,7 @@ parser.add_argument('-exp_name', help='directory for saving the networks of the 
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
 parser.add_argument('-distillation_scale', help='for model distillation', default=0.9, type=int)
+parser.add_argument('-logdir', help='for tensorboard', default="StudentModel6.1", type=str)
 
 args = parser.parse_args()
 
@@ -52,6 +57,7 @@ val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 num_epochs = args.num_epochs
 distillation_scale = args.distillation_scale
+tensorboard_logdir = args.logdir
 
 #set seed
 seed = args.seed
@@ -67,12 +73,15 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/train"
-validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/validate"
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/test"
+# train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/train"
+# validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/validate"
+# test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220617/test"
 # train_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/train"
 # validate_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/validate"
 # test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test"
+train_data_dir = "/home/zhangao/DATASET/DATA_20220617/train"
+validate_data_dir = "/home/zhangao/DATASET/DATA_20220617/validate"
+test_data_dir = "/home/zhangao/DATASET/DATA_20220617/test_specific"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"
@@ -172,7 +181,7 @@ net_student.train()
 print("[INFO] Teacher model encoder depths: {}, decoder depths: {}.".format(net_teacher.module.Tenc.depths, net_teacher.module.Tdec.depths[0]))
 print("[INFO] Student model encoder depths: {}, decoder depths: {}.".format(net_student.module.Tenc.depths, net_student.module.Tdec.depths[0]))
 
-log_dir = "./logs/images"
+log_dir = os.path.join("./logs", tensorboard_logdir)
 if not os.path.exists(log_dir):
     os.mkdir(log_dir)
 writer = SummaryWriter(log_dir)
