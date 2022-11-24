@@ -1,5 +1,8 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 import sys
-sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
 
 import time
 import torch
@@ -12,6 +15,7 @@ import os
 import numpy as np
 import random
 from transweather_model import Transweather
+# from transweather_model_distillation import TransweatherStudent as Transweather
 
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -26,17 +30,17 @@ from torchinfo import summary
 
 
 def preprocessImage(input_img):
-    # Resizing image in the multiple of 16"
-    wd_new,ht_new = input_img.size
-    if ht_new>wd_new and ht_new>1024:
-        wd_new = int(np.ceil(wd_new*1024/ht_new))
-        ht_new = 1024
-    elif ht_new<=wd_new and wd_new>1024:
-        ht_new = int(np.ceil(ht_new*1024/wd_new))
-        wd_new = 1024
-    wd_new = int(16*np.ceil(wd_new/16.0))
-    ht_new = int(16*np.ceil(ht_new/16.0))
-    input_img = input_img.resize((wd_new,ht_new), Image.ANTIALIAS)
+    # # Resizing image in the multiple of 16"
+    # wd_new,ht_new = input_img.size
+    # if ht_new>wd_new and ht_new>1024:
+    #     wd_new = int(np.ceil(wd_new*1024/ht_new))
+    #     ht_new = 1024
+    # elif ht_new<=wd_new and wd_new>1024:
+    #     ht_new = int(np.ceil(ht_new*1024/wd_new))
+    #     wd_new = 1024
+    # wd_new = int(16*np.ceil(wd_new/16.0))
+    # ht_new = int(16*np.ceil(ht_new/16.0))
+    # input_img = input_img.resize((wd_new,ht_new), Image.ANTIALIAS)
 
     # --- Transform to tensor --- #
     transform_input = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -55,15 +59,14 @@ args = parser.parse_args()
 val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 
-# video_path = "/content/drive/MyDrive/DERAIN/DATA_captured/something_else/dusty_video1.mp4"
-# output_video_path = "./videos/dusty_video1_result.avi"
-# model_path = "ckpt/best_512"
-video_path = "/content/drive/MyDrive/DERAIN/video_data/h97cam_water_video.mp4"
-output_video_path = "./videos/h97cam_water_lambda00_video.avi"
-model_path = "ckpt/best_lambda_0.0"
+# video_path = "/home/za/Documents/DATA_tmp/sample.mp4"
+video_path = "/dataset/4.mp4"
+output_video_path = "/home/za/Documents/DATA_tmp/sample_predict.avi"
+# model_path = "ckpt/best_enhancedData"
+model_path = "ckpt/latest"
 
 video = cv2.VideoCapture(video_path)
-video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
+video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(640*2,368))
 # video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(1020,720))
 
 #set seed
@@ -85,9 +88,10 @@ net = nn.DataParallel(net, device_ids=device_ids)
 if device == torch.device("cpu"):
     net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load(model_path))
+    resume_state = torch.load(model_path)
+    net.load_state_dict(resume_state["state_dict"])
     net.to(device)
-    print("====> model ", model_path, " loaded")
+    print("====> model {} loaded".format(model_path))
 
 net.eval()
 
@@ -98,12 +102,12 @@ with torch.no_grad():
         ret, frame = video.read()
         if not ret:
             break
-        frame = frame[:, 180:1200, :]
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         input_img = preprocessImage(pil_img)
         input_img = input_img.to(device)
         input_img = input_img.unsqueeze(0)
         pred_image = net(input_img)
+        # pred_image = net(input_img)[-1]
         pred_image_cpu = pred_image[0].permute(1,2,0).cpu().numpy()
         pred_image_cpu = img_as_ubyte(pred_image_cpu)
         pred_image_cpu = cv2.resize(pred_image_cpu, (frame.shape[1],frame.shape[0]))

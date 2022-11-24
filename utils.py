@@ -14,8 +14,8 @@ from skimage import img_as_ubyte
 
 def calc_psnr(im1, im2):
 
-    im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
-    im2 = im2[0].view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
+    im1 = im1[0].contiguous().view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
+    im2 = im2[0].contiguous().view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
 
     im1, im2 = img_as_ubyte(im1), img_as_ubyte(im2)
 
@@ -25,8 +25,8 @@ def calc_psnr(im1, im2):
     return ans
 
 def calc_ssim(im1, im2):
-    im1 = im1[0].view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
-    im2 = im2[0].view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
+    im1 = im1[0].contiguous().view(im1.shape[2],im1.shape[3],3).detach().cpu().numpy()
+    im2 = im2[0].contiguous().view(im2.shape[2],im2.shape[3],3).detach().cpu().numpy()
 
     im1, im2 = img_as_ubyte(im1), img_as_ubyte(im2)
 
@@ -169,7 +169,7 @@ def print_log(epoch, num_epochs, one_epoch_time, train_psnr, val_psnr, val_ssim,
 def adjust_learning_rate(optimizer, epoch,  lr_decay=0.96):
 
     # --- Decay learning rate --- #
-    step = 4
+    step = 7
 
     if not epoch % step and epoch > 0:
         for param_group in optimizer.param_groups:

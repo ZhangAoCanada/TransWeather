@@ -68,10 +68,10 @@ if seed is not None:
     print('Seed:\t{}'.format(seed))
 
 video_path = "/mnt/d/DATASET/data_capture/CaptureFiles/h97camera_videos/2022_4_12_14_3_53__video.avi"
-output_video_path = "./videos/sample.avi"
+# output_video_path = "./videos/sample.avi"
 model_path = "ckpt/best_StudentModel6.1"
 
-video = cv2.VideoCapture(video_path)
+# video = cv2.VideoCapture(video_path)
 # video_saving = cv2.VideoWriter(output_video_path,cv2.VideoWriter_fourcc('M','J','P','G'),30,(2040,720))
 
 device_ids = [Id for Id in range(torch.cuda.device_count())]
@@ -92,15 +92,18 @@ net.eval()
 
 net = net.module
 
-sample_img = None
-while True:
-    ret, frame = video.read()
-    if not ret:
-        break
-    sample_image = frame
-    # sample_image = cv2.resize(frame, (960, 540))
-    sample_image = cv2.resize(frame, (640, 368))
-    break
+# sample_img = None
+# while True:
+#     ret, frame = video.read()
+#     if not ret:
+#         break
+#     sample_image = frame
+#     # sample_image = cv2.resize(frame, (960, 540))
+#     sample_image = cv2.resize(frame, (640, 368))
+#     break
+
+sample_image = cv2.imread("/home/zhangao/DATASET/DATA_20220531/validate/rain_L/Rain_L_2022_5_7_17_16_46_qin_bang_feiting_29.png")
+sample_image = cv2.resize(sample_image, (640, 368))
 
 if sample_image is not None:
     print("[INFO] image shape: ", sample_image.shape)

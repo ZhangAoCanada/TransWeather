@@ -12,9 +12,10 @@ import math
 from abc import ABCMeta, abstractmethod
 # from mmcv.cnn import ConvModule
 import pdb
+import os
 
 class EncoderTransformer(nn.Module):
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 320, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1]):
@@ -97,6 +98,13 @@ class EncoderTransformer(nn.Module):
             for i in range(depths[3])])
         self.norm4 = norm_layer(embed_dims[3])
 
+        # NOTE: extra cnn layers for post-processing
+        # TODO: 1.MBConv 0.1; 2.MBConv; 3.ConvNeXt 0.1
+        # self.x1convs = nn.ModuleList([ConvNeXtBlock(embed_dims[i]) for i in range(len(embed_dims))])
+        # self.x2convs = nn.ModuleList([ConvNeXtBlock(embed_dims[i+1]) for i in range(len(embed_dims)-1)])
+        # self.x1convs = nn.ModuleList([MBConvBlockProcess(embed_dims[i], embed_dims[i]) for i in range(len(embed_dims))])
+        # self.x2convs = nn.ModuleList([MBConvBlockProcess(embed_dims[i+1], embed_dims[i+1]) for i in range(len(embed_dims)-1)])
+
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -113,11 +121,6 @@ class EncoderTransformer(nn.Module):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
-
-    def init_weights(self, pretrained=None):
-        if isinstance(pretrained, str):
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
 
     def reset_drop_path(self, drop_path_rate):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
@@ -138,9 +141,12 @@ class EncoderTransformer(nn.Module):
             self.block4[i].drop_path.drop_prob = dpr[cur + i]
 
     def forward_features(self, x):
+        # print("**************************************")
+        # print("======> [x]: ", x.shape)
         B = x.shape[0]
         outs = []
         embed_dims=[64, 128, 320, 512]
+        # embed_dims=[128, 256, 512, 1024]
         # stage 1
         x1, H1, W1 = self.patch_embed1(x)
         x2, H2, W2 = self.mini_patch_embed1(x1.permute(0,2,1).reshape(B,embed_dims[0],H1,W1))
@@ -149,11 +155,15 @@ class EncoderTransformer(nn.Module):
             x1 = blk(x1, H1, W1)
         x1 = self.norm1(x1)
         x1 = x1.reshape(B, H1, W1, -1).permute(0, 3, 1, 2).contiguous()
+        # x1 = self.x1convs[0](x1)
+        # print("======> [stage1 x1]: ", x1.shape)
         
         for i, blk in enumerate(self.patch_block1):
             x2 = blk(x2, H2, W2)
         x2 = self.pnorm1(x2)
         x2 = x2.reshape(B, H2, W2, -1).permute(0, 3, 1, 2).contiguous()
+        # x2 = self.x2convs[0](x2)
+        # print("======> [stage1 x2]: ", x2.shape)
 
         outs.append(x1)
 
@@ -168,12 +178,16 @@ class EncoderTransformer(nn.Module):
             x1 = blk(x1, H1, W1)
         x1 = self.norm2(x1)
         x1 = x1.reshape(B, H1, W1, -1).permute(0, 3, 1, 2).contiguous()
+        # x1 = self.x1convs[1](x1)
+        # print("======> [stage2 x1]: ", x1.shape)
         outs.append(x1)
 
         for i, blk in enumerate(self.patch_block2):
             x2 = blk(x2, H2, W2)
         x2 = self.pnorm2(x2)
         x2 = x2.reshape(B, H2, W2, -1).permute(0, 3, 1, 2).contiguous()
+        # x2 = self.x2convs[1](x2)
+        # print("======> [stage2 x2]: ", x2.shape)
 
         
         # stage 3
@@ -187,12 +201,16 @@ class EncoderTransformer(nn.Module):
             x1 = blk(x1, H1, W1)
         x1 = self.norm3(x1)
         x1 = x1.reshape(B, H1, W1, -1).permute(0, 3, 1, 2).contiguous()
+        # x1 = self.x1convs[2](x1)
+        # print("======> [stage3 x1]: ", x1.shape)
         outs.append(x1)
         
         for i, blk in enumerate(self.patch_block3):
             x2 = blk(x2, H2, W2)
         x2 = self.pnorm3(x2)
         x2 = x2.reshape(B, H2, W2, -1).permute(0, 3, 1, 2).contiguous()
+        # x2 = self.x2convs[2](x2)
+        # print("======> [stage3 x2]: ", x2.shape)
 
         # stage 4
         x1, H1, W1 = self.patch_embed4(x1)
@@ -204,6 +222,8 @@ class EncoderTransformer(nn.Module):
             x1 = blk(x1, H1, W1)
         x1 = self.norm4(x1)
         x1 = x1.reshape(B, H1, W1, -1).permute(0, 3, 1, 2).contiguous()
+        # x1 = self.x1convs[3](x1)
+        # print("======> [stage4 x1]: ", x1.shape)
         outs.append(x1)
 
         return outs
@@ -549,7 +569,7 @@ class DWConv(nn.Module):
         return x
 
 class DecoderTransformer(nn.Module):
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 320, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1]):
@@ -590,11 +610,6 @@ class DecoderTransformer(nn.Module):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
-
-    def init_weights(self, pretrained=None):
-        if isinstance(pretrained, str):
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
 
     def reset_drop_path(self, drop_path_rate):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
@@ -640,14 +655,20 @@ class Tenc(EncoderTransformer):
     def __init__(self, **kwargs):
         super(Tenc, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[4, 2, 2, 1],
+            # patch_size=4, embed_dims=[128, 256, 512, 1024], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[4, 8, 8, 16], sr_ratios=[4, 2, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 4, 8, 16], sr_ratios=[4, 2, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[4, 2, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 class Tdec(DecoderTransformer):
     def __init__(self, **kwargs):
         super(Tdec, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            # patch_size=4, embed_dims=[128, 256, 512, 1024], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[8, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[4, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 
@@ -709,39 +730,69 @@ class convprojection(nn.Module):
 
         return x
 
-class convprojection_base(nn.Module):
-    def __init__(self, path=None, **kwargs):
-        super(convprojection_base,self).__init__()
 
-        # self.convd32x = UpsampleConvLayer(512, 512, kernel_size=4, stride=2)
+class ConvProjectionConvNeXt(nn.Module):
+    def __init__(self, path=None, **kwargs):
+        super(ConvProjectionConvNeXt,self).__init__()
+
+        # self.convd32x = SECONDFPNConvLayer(512, 512, kernel_size=4, stride=2)
+        # self.convd16x = SECONDFPNConvLayer(512, 320, kernel_size=4, stride=2)
+        # self.dense_4 = nn.Sequential(MBConvBlock(320, 320))
+        # self.convd8x = SECONDFPNConvLayer(320, 128, kernel_size=4, stride=2)
+        # self.dense_3 = nn.Sequential(MBConvBlock(128, 128))
+        # self.convd4x = SECONDFPNConvLayer(128, 64, kernel_size=4, stride=2)
+        # self.dense_2 = nn.Sequential(MBConvBlock(64, 64))
+        # self.convd2x = SECONDFPNConvLayer(64, 16, kernel_size=4, stride=2)
+        # self.dense_1 = nn.Sequential(MBConvBlock(16, 16))
+        # self.convd1x = SECONDFPNConvLayer(16, 8, kernel_size=4, stride=2)
+        # self.conv_output = ConvLayer(8, 3, kernel_size=3, stride=1, padding=1)
+
+        self.convd32x = UpsampleConvLayer(512, 512, kernel_size=4, stride=2)
         self.convd16x = UpsampleConvLayer(512, 320, kernel_size=4, stride=2)
-        self.dense_4 = nn.Sequential(ResidualBlock(320))
+        self.dense_4 = nn.Sequential(MBConvBlock(320, 320))
         self.convd8x = UpsampleConvLayer(320, 128, kernel_size=4, stride=2)
-        self.dense_3 = nn.Sequential(ResidualBlock(128))
+        self.dense_3 = nn.Sequential(MBConvBlock(128, 128))
         self.convd4x = UpsampleConvLayer(128, 64, kernel_size=4, stride=2)
-        self.dense_2 = nn.Sequential(ResidualBlock(64))
+        self.dense_2 = nn.Sequential(MBConvBlock(64, 64))
         self.convd2x = UpsampleConvLayer(64, 16, kernel_size=4, stride=2)
-        self.dense_1 = nn.Sequential( ResidualBlock(16))
+        self.dense_1 = nn.Sequential(MBConvBlock(16, 16))
         self.convd1x = UpsampleConvLayer(16, 8, kernel_size=4, stride=2)
         self.conv_output = ConvLayer(8, 3, kernel_size=3, stride=1, padding=1)
 
+        # self.convd32x = UpsampleConvLayer(1024, 1024, kernel_size=4, stride=2)
+        # self.convd16x = UpsampleConvLayer(1024, 512, kernel_size=4, stride=2)
+        # self.dense_4 = nn.Sequential(MBConvBlock(512, 512))
+        # self.convd8x = UpsampleConvLayer(512, 256, kernel_size=4, stride=2)
+        # self.dense_3 = nn.Sequential(MBConvBlock(256, 256))
+        # self.convd4x = UpsampleConvLayer(256, 128, kernel_size=4, stride=2)
+        # self.dense_2 = nn.Sequential(MBConvBlock(128, 128))
+        # self.convd2x = UpsampleConvLayer(128, 64, kernel_size=4, stride=2)
+        # self.dense_1 = nn.Sequential(MBConvBlock(64, 64))
+        # self.convd1x = UpsampleConvLayer(64, 16, kernel_size=4, stride=2)
+        # self.dense_0 = nn.Sequential(MBConvBlock(16, 16))
+        # self.conv_output = ConvLayer(16, 3, kernel_size=3, stride=1, padding=1)
+
+
         self.active = nn.Tanh()        
 
-    def forward(self,x1):
+    def forward(self,x1,x2):
 
-#         if x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
-#             p2d = (0,-1,0,-1)
-#             res32x = F.pad(res32x,p2d,"constant",0)
+        res32x = self.convd32x(x2[0])
+
+        if x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
+            p2d = (0,-1,0,-1)
+            res32x = F.pad(res32x,p2d,"constant",0)
             
-#         elif x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] == res32x.shape[2]:
-#             p2d = (0,-1,0,0)
-#             res32x = F.pad(res32x,p2d,"constant",0)
-#         elif x1[3].shape[3] == res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
-#             p2d = (0,0,0,-1)
-#             res32x = F.pad(res32x,p2d,"constant",0)
+        elif x1[3].shape[3] != res32x.shape[3] and x1[3].shape[2] == res32x.shape[2]:
+            p2d = (0,-1,0,0)
+            res32x = F.pad(res32x,p2d,"constant",0)
+        elif x1[3].shape[3] == res32x.shape[3] and x1[3].shape[2] != res32x.shape[2]:
+            p2d = (0,0,0,-1)
+            res32x = F.pad(res32x,p2d,"constant",0)
 
-#         res16x = res32x + x1[3]
-        res16x = self.convd16x(x1[3]) 
+        # res16x = self.dense_5(res32x) + x1[3]
+        res16x = res32x + x1[3]
+        res16x = self.convd16x(res16x) 
 
         if x1[2].shape[3] != res16x.shape[3] and x1[2].shape[2] != res16x.shape[2]:
             p2d = (0,-1,0,-1)
@@ -754,57 +805,33 @@ class convprojection_base(nn.Module):
             res16x = F.pad(res16x,p2d,"constant",0)
 
         res8x = self.dense_4(res16x) + x1[2]
+        # res8x = res16x + x1[2]
         res8x = self.convd8x(res8x) 
         res4x = self.dense_3(res8x) + x1[1]
+        # res4x = res8x + x1[1]
         res4x = self.convd4x(res4x)
         res2x = self.dense_2(res4x) + x1[0]
+        # res2x = res4x + x1[0]
         res2x = self.convd2x(res2x)
         x = res2x
         x = self.dense_1(x)
         x = self.convd1x(x)
 
+        # res8x = self.dense_4(res16x) + x1[2]
+        # # res8x = res16x + x1[2]
+        # res8x = self.convd8x(res8x) 
+        # res4x = self.dense_3(res8x) + x1[1]
+        # # res4x = res8x + x1[1]
+        # res4x = self.convd4x(res4x)
+        # res2x = self.dense_2(res4x) + x1[0]
+        # # res2x = res4x + x1[0]
+        # res2x = self.convd2x(res2x)
+        # x = res2x
+        # x = self.dense_1(x)
+        # x = self.convd1x(x)
+        # x = self.dense_0(x)
+
         return x
-
-
-## The following is the network which can be fine-tuned for specific datasets
-
-class Transweather_base(nn.Module):
-
-    def __init__(self, path=None, **kwargs):
-        super(Transweather_base, self).__init__()
-
-        self.Tenc = Tenc()
-        
-        self.convproj = convprojection_base()
-
-        self.clean = ConvLayer(8, 3, kernel_size=3, stride=1, padding=1)
-
-        self.active = nn.Tanh()
-        
-        if path is not None:
-            self.load(path)
-
-    def forward(self, x):
-
-        x1 = self.Tenc(x)
-
-        x = self.convproj(x1)
-
-        clean = self.active(self.clean(x))
-
-        return clean
-
-    def load(self, path):
-        """
-        Load checkpoint.
-        """
-        checkpoint = torch.load(path, map_location=lambda storage, loc: storage)
-        model_state_dict_keys = self.state_dict().keys()
-        checkpoint_state_dict_noprefix = strip_prefix_if_present(checkpoint['state_dict'], "module.")
-        self.load_state_dict(checkpoint_state_dict_noprefix, strict=False)
-        del checkpoint
-        torch.cuda.empty_cache()
-
 
 ## The following is original network found in paper which solves all-weather removal problems 
 ## using a single model
@@ -818,9 +845,11 @@ class Transweather(nn.Module):
         
         self.Tdec = Tdec()
         
-        self.convtail = convprojection()
+        # self.convtail = convprojection()
+        self.convtail = ConvProjectionConvNeXt()
 
         self.clean = ConvLayer(8, 3, kernel_size=3, stride=1, padding=1)
+        # self.clean = ConvLayer(16, 3, kernel_size=3, stride=1, padding=1)
 
         self.active = nn.Tanh()
         
@@ -843,12 +872,23 @@ class Transweather(nn.Module):
         """
         Load checkpoint.
         """
-        checkpoint = torch.load(path, map_location=lambda storage, loc: storage)
-        model_state_dict_keys = self.state_dict().keys()
-        checkpoint_state_dict_noprefix = strip_prefix_if_present(checkpoint['state_dict'], "module.")
-        self.load_state_dict(checkpoint_state_dict_noprefix, strict=False)
-        del checkpoint
-        torch.cuda.empty_cache()
+        if os.path.exists(path):
+            resume_state = torch.load(path)
+            self.load_state_dict(resume_state['state_dict'])
+            print("-----> [ckpt] Model loaded from {}".format(path))
+        else:
+            print("-----> [warning] No checkpoint found at {}".format(path))
+    
+    def save(self, path):
+        """
+        Save checkpoint.
+        """
+        state = {
+            'state_dict': self.state_dict(),
+        }
+        torch.save(state, path)
+        print("-----> [ckpt] Model saved to {}".format(path))
+
 
 
 

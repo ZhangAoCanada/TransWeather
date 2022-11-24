@@ -17,22 +17,47 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class TrainData(data.Dataset):
     def __init__(self, crop_size, train_data_dir, rain_L_dir, rain_H_dir, gt_dir):
         super().__init__()
-        self.input_names_L, self.gt_names_L = self.getRainLImageNames(train_data_dir, rain_L_dir, gt_dir)
-        self.input_names_H, self.gt_names_H = self.getRainHImageNames(train_data_dir, rain_H_dir, gt_dir)
-        self.input_names = self.input_names_L + self.input_names_H 
-        self.gt_names = self.gt_names_L + self.gt_names_H 
+        if rain_H_dir is None:
+            self.input_names, self.gt_names = self.getImageNames(train_data_dir, rain_L_dir, gt_dir)
+        else:
+            self.input_names_L, self.gt_names_L = self.getRainLImageNames(train_data_dir, rain_L_dir, gt_dir)
+            self.input_names_H, self.gt_names_H = self.getRainHImageNames(train_data_dir, rain_H_dir, gt_dir)
+            self.input_names = self.input_names_L + self.input_names_H 
+            self.gt_names = self.gt_names_L + self.gt_names_H 
         ### NOTE: add enchancement training data ###
-        self.training_enhance_percentage = 0.2
-        self.gt_names_enhance = self.gt_names_L.copy()
-        shuffle(self.gt_names_enhance)
-        self.gt_names_enhance = self.gt_names_enhance[:int(len(self.input_names) * self.training_enhance_percentage)]
-        print("[INFO] len of trainData without enhancement: {}".format(len(self.input_names)))
-        print("[INFO] Training gt data for enhancement: {}".format(len(self.gt_names_enhance)))
-        self.input_names += self.gt_names_enhance
-        self.gt_names += self.gt_names_enhance
+        # self.training_enhance_percentage = 0.2
+        # self.gt_names_enhance = self.gt_names.copy()
+        # shuffle(self.gt_names_enhance)
+        # self.gt_names_enhance = self.gt_names_enhance[:int(len(self.input_names) * self.training_enhance_percentage)]
+        # print("[INFO] len of trainData without enhancement: {}".format(len(self.input_names)))
+        # print("[INFO] Training gt data for enhancement: {}".format(len(self.gt_names_enhance)))
+        # self.input_names += self.gt_names_enhance
+        # self.gt_names += self.gt_names_enhance
         ############################################
+        print("Total number of training data: ", len(self.gt_names))
         self.crop_size = crop_size
         self.train_data_dir = train_data_dir
+
+    def getImageNames(self, root_dir, image_dir, gt_dir):
+        input_dir = os.path.join(root_dir, image_dir)
+        output_dir = os.path.join(root_dir, gt_dir)
+        image_names_tmp = []
+        image_names = []
+        gt_names = []
+        for file in os.listdir(input_dir):
+            if file.endswith(".png"):
+                in_name = os.path.join(input_dir, file)
+                image_names_tmp.append(in_name)
+        for in_name in image_names_tmp:
+            ### NOTE: choice 1 ###
+            image_ind = re.findall(r'\d+', in_name)[0]
+            gt_name = os.path.join(output_dir, image_ind + "_clean.png")
+            ### NOTE: choice 2 ###
+            # gt_name = in_name.replace(image_dir, gt_dir).replace("Rain_L_", "No_Rain_")
+            if os.path.exists(gt_name):
+                image_names.append(in_name)
+                gt_names.append(gt_name)
+        return image_names, gt_names
 
     def getRainLImageNames(self, root_dir, image_dir, gt_dir):
         input_dir = os.path.join(root_dir, image_dir)

@@ -39,7 +39,8 @@ exp_name = args.exp_name
 # image_dir = "data"
 # gt_dir = "gt"
 
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test_specific"
+# test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test_specific"
+test_data_dir = "/home/zhangao/DATASET/DATA_20220617/test_specific"
 sub_dir_names = ["dawn_cloudy", "night_outdoors", "sunny_outdoors", "underground"]
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"

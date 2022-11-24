@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import time
 import torch
@@ -19,7 +19,7 @@ import numpy as np
 import random 
 from torch.utils.tensorboard import SummaryWriter
 
-from transweather_model import Transweather
+from transweather_sequence import TransweatherSeq
 
 from train_psnrloss import PSNRLoss
 import pytorch_ssim
@@ -45,7 +45,7 @@ parser.add_argument('-val_batch_size', help='Set the validation/test batch size'
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
-parser.add_argument('-logdir', help='for tensorboard', default="TeacherTry12.5", type=str)
+parser.add_argument('-logdir', help='for tensorboard', default="TeacherTry12", type=str)
 # parser.add_argument('-logdir', help='for tensorboard', default="new_try12", type=str)
 
 args = parser.parse_args()
@@ -76,12 +76,12 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-train_data_dir = "/home/za/DATASET/DATA_20220531/train"
-validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
-test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
-# train_data_dir = "/home/za/DATASET/DATA_20220617/train"
-# validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
-# test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
+# train_data_dir = "/home/za/DATASET/DATA_20220531/train"
+# validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
+# test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
+train_data_dir = "/home/za/DATASET/DATA_20220617/train"
+validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
+test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"
@@ -98,7 +98,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # --- Define the network --- #
-net = Transweather()
+net = TransweatherSeq("./ckpt/transweather_pretrained.pth")
+# net = TransweatherSeq()
 
 
 # --- Build optimizer --- #
@@ -117,27 +118,27 @@ vgg_model = vgg_model.to(device)
 for param in vgg_model.parameters():
     param.requires_grad = False
 
-modelbest_path = "./{}/latest".format(exp_name)
+# modelbest_path = "./{}/latest".format(exp_name)
 
-# --- Load the network weight --- #
-if os.path.exists('./{}/'.format(exp_name))==False:     
-    os.mkdir('./{}/'.format(exp_name))  
+# # --- Load the network weight --- #
+# if os.path.exists('./{}/'.format(exp_name))==False:     
+#     os.mkdir('./{}/'.format(exp_name))  
 
-if os.path.exists(modelbest_path):
-    resume_state = torch.load(modelbest_path)
-    net.load_state_dict(resume_state["state_dict"])
-    optimizer.load_state_dict(resume_state["optimizer"])
-    epoch_start = resume_state["epoch"]
-    print("----- latest trained loaded -----")
-elif os.path.exists("./ckpt/pretrained"):
-    # net.load_state_dict(torch.load('./{}/pretrained_on_data2070'.format(exp_name)))
-    # print("----- pre-trained with DATA2070images loaded -----")
-    # resume_state = torch.load(torch.load('./{}/pretrained'.format(exp_name)))
-    resume_state = torch.load("./ckpt/pretrained")
-    net.load_state_dict(resume_state["state_dict"])
-    print("----- pre-trained model loaded -----")
-else:
-    print('--- no weight loaded ---')
+# if os.path.exists(modelbest_path):
+#     resume_state = torch.load(modelbest_path)
+#     net.load_state_dict(resume_state["state_dict"])
+#     optimizer.load_state_dict(resume_state["optimizer"])
+#     epoch_start = resume_state["epoch"]
+#     print("----- latest trained loaded -----")
+# elif os.path.exists("./ckpt/best_try12"):
+#     # net.load_state_dict(torch.load('./{}/pretrained_on_data2070'.format(exp_name)))
+#     # print("----- pre-trained with DATA2070images loaded -----")
+#     # resume_state = torch.load(torch.load('./{}/pretrained'.format(exp_name)))
+#     resume_state = torch.load("./ckpt/best_try12")
+#     net.load_state_dict(resume_state["state_dict"])
+#     print("----- pre-trained model loaded -----")
+# else:
+#     print('--- no weight loaded ---')
 
 
 # pytorch_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)

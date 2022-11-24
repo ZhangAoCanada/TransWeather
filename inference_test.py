@@ -1,3 +1,7 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 from genericpath import exists
 import sys
 sys.path.append("/content/drive/MyDrive/DERAIN/TransWeather")
@@ -13,6 +17,7 @@ import os
 import numpy as np
 import random
 from transweather_model import Transweather
+# from transweather_model_test import Transweather
 
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -35,11 +40,8 @@ args = parser.parse_args()
 val_batch_size = args.val_batch_size
 exp_name = args.exp_name
 
-# test_data_dir = "/content/drive/MyDrive/DERAIN/test"
-# image_dir = "data"
-# gt_dir = "gt"
-
-test_data_dir = "/content/drive/MyDrive/DERAIN/DATA_20220531/test_specific"
+test_data_dir = "/home/za/DATASET/DATA_20220531/test_specific"
+# test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
 sub_dir_names = ["dawn_cloudy", "night_outdoors", "sunny_outdoors", "underground"]
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
@@ -62,10 +64,14 @@ summary(net, (1, 3, 720, 480))
 
 net = nn.DataParallel(net, device_ids=device_ids)
 
+# modelbest_path = "./ckpt/best"
+modelbest_path = "./ckpt/latest"
+
 if device == torch.device("cpu"):
     net.load_state_dict(torch.load("ckpt/latest", map_location=torch.device('cpu')))
 else:
-    net.load_state_dict(torch.load("ckpt/best"))
+    resume_state = torch.load(modelbest_path)
+    net.load_state_dict(resume_state["state_dict"])
     net.to(device)
     print("====> model best loaded.")
 

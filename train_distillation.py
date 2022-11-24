@@ -186,7 +186,7 @@ if not os.path.exists(log_dir):
     os.mkdir(log_dir)
 writer = SummaryWriter(log_dir)
 
-count = 0
+count = epoch_start * len(lbl_train_data_loader)
 
 ### NOTE: initialization, testing parameters ###
 psnr_loss = PSNRLoss(toY=False)

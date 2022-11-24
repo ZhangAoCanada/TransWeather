@@ -114,6 +114,11 @@ class EncoderTransformer(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_()
 
+    def init_weights(self, pretrained=None):
+        if isinstance(pretrained, str):
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
+
     def reset_drop_path(self, drop_path_rate):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
         cur = 0
@@ -586,6 +591,11 @@ class DecoderTransformer(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_()
 
+    def init_weights(self, pretrained=None):
+        if isinstance(pretrained, str):
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
+
     def reset_drop_path(self, drop_path_rate):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
         cur = 0
@@ -626,18 +636,33 @@ class DecoderTransformer(nn.Module):
 
         return x
 
+# class Tenc(EncoderTransformer):
+#     def __init__(self, **kwargs):
+#         super(Tenc, self).__init__(
+#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
+#             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[4, 2, 2, 1],
+#             drop_rate=0.0, drop_path_rate=0.1)
+
+# class Tdec(DecoderTransformer):
+#     def __init__(self, **kwargs):
+#         super(Tdec, self).__init__(
+#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+#             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+#             drop_rate=0.0, drop_path_rate=0.1)
+
+
 class Tenc(EncoderTransformer):
     def __init__(self, **kwargs):
         super(Tenc, self).__init__(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 1, 2, 2], mlp_ratios=[2, 2, 2, 2],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[1, 1, 1, 1], sr_ratios=[4, 2, 2, 1],
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 4, 4, 8], sr_ratios=[4, 2, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 class Tdec(DecoderTransformer):
     def __init__(self, **kwargs):
         super(Tdec, self).__init__(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[2, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 
@@ -799,10 +824,10 @@ class Transweather_base(nn.Module):
 ## The following is original network found in paper which solves all-weather removal problems 
 ## using a single model
 
-class TransweatherStudent(nn.Module):
+class Transweather(nn.Module):
 
     def __init__(self, path=None, **kwargs):
-        super(TransweatherStudent, self).__init__()
+        super(Transweather, self).__init__()
 
         self.Tenc = Tenc()
         
@@ -827,9 +852,18 @@ class TransweatherStudent(nn.Module):
 
         clean = self.active(self.clean(x))
 
-        pred_list = []
-        pred_list += x1
-        pred_list += x2
-        pred_list += [x]
-        pred_list += [clean]
-        return pred_list
+        return clean
+
+    def load(self, path):
+        """
+        Load checkpoint.
+        """
+        checkpoint = torch.load(path, map_location=lambda storage, loc: storage)
+        model_state_dict_keys = self.state_dict().keys()
+        checkpoint_state_dict_noprefix = strip_prefix_if_present(checkpoint['state_dict'], "module.")
+        self.load_state_dict(checkpoint_state_dict_noprefix, strict=False)
+        del checkpoint
+        torch.cuda.empty_cache()
+
+
+
