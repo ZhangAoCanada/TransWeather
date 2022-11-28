@@ -20,6 +20,7 @@ import random
 from torch.utils.tensorboard import SummaryWriter
 
 from transweather_model import Transweather
+from transweather_model_teacher import TransweatherTeacher
 
 from train_psnrloss import PSNRLoss
 import pytorch_ssim
@@ -30,6 +31,7 @@ from utils import calc_psnr, calc_ssim
 
 
 model_load_path = "./ckpt/latest"
+# model_load_path = "./ckpt/best_combinedData"
 model_save_path = "./ckpt/transweather_pretrained.pth"
 
 
@@ -43,8 +45,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # --- Define the network --- #
-# net = TransweatherSeq("./ckpt/best_try12")
-net = Transweather()
+# net = Transweather()
+net = TransweatherTeacher()
 
 
 
@@ -63,6 +65,7 @@ for param in vgg_model.parameters():
 
 resume_state = torch.load(model_load_path)
 net.load_state_dict(resume_state["state_dict"])
+# net.load_state_dict(resume_state)
 print("====> loaded checkpoint '{}'".format(model_load_path))
 
 net.module.save(model_save_path)

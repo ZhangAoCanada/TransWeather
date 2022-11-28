@@ -2,6 +2,7 @@ torch171
 __pycache__
 testt.py
 logs
+logs_seq
 ckpt
 imgs
 videos

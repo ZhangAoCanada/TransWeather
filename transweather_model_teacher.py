@@ -12,6 +12,7 @@ import math
 from abc import ABCMeta, abstractmethod
 # from mmcv.cnn import ConvModule
 import pdb
+import os
 
 class EncoderTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
@@ -699,8 +700,30 @@ class convprojection(nn.Module):
 
         res8x = self.dense_4(res16x) + x1[2]
         res8x = self.convd8x(res8x) 
+
+        if x1[1].shape[3] != res8x.shape[3] and x1[1].shape[2] != res8x.shape[2]:
+            p2d = (0,-1,0,-1)
+            res8x = F.pad(res8x,p2d,"constant",0)
+        elif x1[1].shape[3] != res8x.shape[3] and x1[1].shape[2] == res8x.shape[2]:
+            p2d = (0,-1,0,0)
+            res8x = F.pad(res8x,p2d,"constant",0)
+        elif x1[1].shape[3] == res8x.shape[3] and x1[1].shape[2] != res8x.shape[2]:
+            p2d = (0,0,0,-1)
+            res8x = F.pad(res8x,p2d,"constant",0)
+
         res4x = self.dense_3(res8x) + x1[1]
         res4x = self.convd4x(res4x)
+
+        if x1[0].shape[3] != res4x.shape[3] and x1[0].shape[2] != res4x.shape[2]:
+            p2d = (0,-1,0,-1)
+            res4x = F.pad(res4x,p2d,"constant",0)
+        elif x1[0].shape[3] != res4x.shape[3] and x1[0].shape[2] == res4x.shape[2]:
+            p2d = (0,-1,0,0)
+            res4x = F.pad(res4x,p2d,"constant",0)
+        elif x1[0].shape[3] == res4x.shape[3] and x1[0].shape[2] != res4x.shape[2]:
+            p2d = (0,0,0,-1)
+            res4x = F.pad(res4x,p2d,"constant",0)
+
         res2x = self.dense_2(res4x) + x1[0]
         res2x = self.convd2x(res2x)
         x = res2x
@@ -827,7 +850,7 @@ class TransweatherTeacher(nn.Module):
         if path is not None:
             self.load(path)
 
-    def forward(self, x):
+    def forward(self, x, reset=False):
 
         x1 = self.Tenc(x)
 
@@ -837,23 +860,33 @@ class TransweatherTeacher(nn.Module):
 
         clean = self.active(self.clean(x))
 
-        pred_list = []
-        pred_list += x1
-        pred_list += x2
-        pred_list += [x]
-        pred_list += [clean]
-        return pred_list
+        return clean
+
+        ### NOTE: for model distillation
+        # pred_list = []
+        # pred_list += x1
+        # pred_list += x2
+        # pred_list += [x]
+        # pred_list += [clean]
+        # return pred_list
 
     def load(self, path):
         """
         Load checkpoint.
         """
-        checkpoint = torch.load(path, map_location=lambda storage, loc: storage)
-        model_state_dict_keys = self.state_dict().keys()
-        checkpoint_state_dict_noprefix = strip_prefix_if_present(checkpoint['state_dict'], "module.")
-        self.load_state_dict(checkpoint_state_dict_noprefix, strict=False)
-        del checkpoint
-        torch.cuda.empty_cache()
-
-
-
+        if os.path.exists(path):
+            resume_state = torch.load(path)
+            self.load_state_dict(resume_state['state_dict'])
+            print("-----> [ckpt] Model loaded from {}".format(path))
+        else:
+            print("-----> [warning] No checkpoint found at {}".format(path))
+    
+    def save(self, path):
+        """
+        Save checkpoint.
+        """
+        state = {
+            'state_dict': self.state_dict(),
+        }
+        torch.save(state, path)
+        print("-----> [ckpt] Model saved to {}".format(path))

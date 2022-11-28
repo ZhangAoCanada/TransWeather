@@ -7,6 +7,7 @@ from base_networks import *
 from multi_scale_deformable_attn_function import MultiScaleDeformableAttnFunction_fp16, MultiScaleDeformableAttnFunction_fp32
 from mmcv.ops.multi_scale_deform_attn import multi_scale_deformable_attn_pytorch
 from transweather_model import Transweather
+from transweather_model_teacher import TransweatherTeacher
 
 
 
@@ -95,7 +96,9 @@ class CrossAttentionFast(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, query, x):
-        assert query.shape == x.shape
+        # assert query.shape == x.shape
+        if not query.shape == x.shape:
+            raise ValueError(f"query shape {query.shape} should be equal to x shape {x.shape}.")
         B, C, W, H = x.shape
         N = W * H
         query = query.permute(0, 2, 3, 1).contiguous().view(B, W*H, C)
@@ -170,30 +173,36 @@ class CrossDeformableAttention(nn.Module):
 
 
 
-class TransweatherSeq(Transweather):
+# class TransweatherSeq(Transweather):
+class TransweatherSeq(TransweatherTeacher):
     def __init__(self, ckpt_path=None):
         super(TransweatherSeq, self).__init__(ckpt_path)
         self.previous_feature = None
-        self.cross_attn = CrossAttention(dim=512, num_heads=8, dropout=0.1)
-    
-    def checkPreviousFeature(self, x):
-        if self.previous_feature is None:
-            self.previous_feature = x[0]
-    
-    def sequenceAttention(self, x, reset=False):
-        self.checkPreviousFeature(x)
-        output = self.cross_attn(self.previous_feature, x[0])
-        if not reset:
-            self.previous_feature = x[0]
+        # self.cross_attn = CrossAttention(dim=512, num_heads=8, dropout=0.1)
+        self.cross_attn = CrossAttentionFast(dim=512, num_heads=8, attn_drop=0., sr_ratio=2)
+   
+    def updatePreviousFeature(self, x):
+        self.eval()
+        with torch.no_grad():
             ### TODO: aggregate previous feature and current feature to 
             ###      get a new feature
             # self.previous_feature = concat(self.previous_feature, x[0])
             # self.previous_feature = residualbasic(self.previous_feature)
-        else:
-            self.previous_feature = None
+            output = x.clone()
+            self.train()
+            return output
+    
+    def sequenceAttention(self, x, reset=False):
+        x_in = x[0]
+        if self.previous_feature is None:
+            self.previous_feature = self.updatePreviousFeature(x_in)
+        output = self.cross_attn(self.previous_feature, x_in)
+        self.previous_feature = self.updatePreviousFeature(output)
         return [output]
 
     def forward(self, x, reset=False):
+        if reset:
+            self.previous_feature = None
 
         x1 = self.Tenc(x)
 
@@ -201,7 +210,7 @@ class TransweatherSeq(Transweather):
 
         x2 = self.sequenceAttention(x2, reset=reset)
 
-        x = self.convtail(x1,x2)
+        x = self.convtail(x1, x2)
 
         clean = self.active(self.clean(x))
 

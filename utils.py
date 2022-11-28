@@ -84,6 +84,35 @@ def validation(net, val_data_loader, device, exp_name, save_tag=False):
     avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
     return avr_psnr, avr_ssim
 
+def validation_seq(net, val_data_loader, device, exp_name, save_tag=False):
+
+    psnr_list = []
+    ssim_list = []
+
+    for batch_id, val_data in enumerate(val_data_loader):
+
+        with torch.no_grad():
+            input_im, gt, if_continue, imgid = val_data
+            input_im = input_im.to(device)
+            gt = gt.to(device)
+            pred_image = net(input_im, not if_continue)
+
+        # --- Calculate the average PSNR --- #
+        psnr_list.extend(calc_psnr(pred_image, gt))
+
+        # --- Calculate the average SSIM --- #
+        ssim_list.extend(calc_ssim(pred_image, gt))
+
+        # --- Save image --- #
+        if save_tag:
+            # print()
+            save_image(pred_image, imgid, exp_name)
+
+    avr_psnr = sum(psnr_list) / (len(psnr_list) + 1e-10)
+    avr_ssim = sum(ssim_list) / (len(ssim_list) + 1e-10)
+    return avr_psnr, avr_ssim
+
+
 
 def validation_val(net, val_data_loader, device, exp_name, category, save_tag=False):
 
@@ -169,7 +198,7 @@ def print_log(epoch, num_epochs, one_epoch_time, train_psnr, val_psnr, val_ssim,
 def adjust_learning_rate(optimizer, epoch,  lr_decay=0.96):
 
     # --- Decay learning rate --- #
-    step = 7
+    step = 5
 
     if not epoch % step and epoch > 0:
         for param_group in optimizer.param_groups:

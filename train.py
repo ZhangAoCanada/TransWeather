@@ -39,13 +39,13 @@ parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4
 parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
 parser.add_argument('-train_batch_size', help='Set the training batch size', default=7, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
-# parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
-parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
+parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
+# parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
-parser.add_argument('-logdir', help='for tensorboard', default="TeacherTry12.5", type=str)
+parser.add_argument('-logdir', help='for tensorboard', default="TeacherTry12.5_combine", type=str)
 # parser.add_argument('-logdir', help='for tensorboard', default="new_try12", type=str)
 
 args = parser.parse_args()
@@ -76,12 +76,12 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-train_data_dir = "/home/za/DATASET/DATA_20220531/train"
-validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
-test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
-# train_data_dir = "/home/za/DATASET/DATA_20220617/train"
-# validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
-# test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
+# train_data_dir = "/home/za/DATASET/DATA_20220531/train"
+# validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
+# test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
+train_data_dir = "/home/za/DATASET/DATA_20220617/train"
+validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
+test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
 rain_L_dir = "rain_L"
 rain_H_dir = "rain_H"
 gt_dir = "gt"

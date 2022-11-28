@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 from genericpath import exists
 import sys
@@ -73,7 +73,7 @@ else:
     resume_state = torch.load(modelbest_path)
     net.load_state_dict(resume_state["state_dict"])
     net.to(device)
-    print("====> model best loaded.")
+    print("====> model {} loaded".format(modelbest_path))
 
 net.eval()
 
