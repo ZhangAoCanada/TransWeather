@@ -13,6 +13,8 @@ from abc import ABCMeta, abstractmethod
 # from mmcv.cnn import ConvModule
 import pdb
 import os
+from multi_scale_deformable_attn_function import MultiScaleDeformableAttnFunction_fp16, MultiScaleDeformableAttnFunction_fp32
+from mmcv.ops.multi_scale_deform_attn import multi_scale_deformable_attn_pytorch, MultiScaleDeformableAttention
 
 class EncoderTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 320, 512],
@@ -339,7 +341,7 @@ class Mlp(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
+    def __init__(self, dim, nnum_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
         super().__init__()
         assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
 
@@ -399,6 +401,159 @@ class Attention(nn.Module):
         x = self.proj_drop(x)
 
         return x
+
+
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+########## NOTE: use another self-attention module ##########
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+#############################################################
+class SelfDeformableAttention(nn.Module):
+    def __init__(self, dim, num_heads, num_levels, num_points, attn_drop=0.):
+        super(SelfDeformableAttention, self).__init__()
+        self.multiscale_deformable_attn_fn = MultiScaleDeformableAttention(dim, num_heads, num_levels, num_points, dropout=attn_drop)
+        self.dim = dim
+        self.num_heads = num_heads
+        self.num_levels = num_levels
+        self.num_points = num_points
+        self.output_proj = nn.Linear(dim, dim)
+        # self.act = nn.GELU()
+        # self.norm = nn.LayerNorm(dim)
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+    
+    def forward(self, x, H, W):
+        spatial_shapes = torch.tensor([H, W], dtype=torch.long).repeat(self.num_levels, 1).cuda()
+        b, num_query, C = x.shape
+        value = x.permute(1, 0, 2)
+
+        # create meshgrid with shape (H, W, 2)
+        meshgrid = torch.stack(torch.meshgrid([torch.arange(H), torch.arange(W)]), dim=-1).float().cuda()
+        meshgrid = meshgrid / torch.tensor([H - 1, W - 1], dtype=torch.float).cuda()
+        meshgrid = meshgrid.view(1, H, W, 1, 2).repeat(b, 1, 1, self.num_levels, 1).view(b, num_query, self.num_levels, 2)
+
+        spatial_shapes_for_start = [(H, W)]
+        spatial_shapes_for_start = torch.as_tensor(spatial_shapes_for_start, dtype=torch.long).cuda()
+        level_start_index = torch.cat((spatial_shapes_for_start.new_zeros((1,)), spatial_shapes_for_start.prod(1).cumsum(0)[:-1]))
+
+        output = self.multiscale_deformable_attn_fn(query=value, reference_points=meshgrid, spatial_shapes=spatial_shapes, level_start_index=level_start_index)
+        output = output.permute(1, 0, 2)
+        output = self.output_proj(output)
+        # output = self.norm(self.output_proj(output))
+        # output = self.act(output)
+
+        return output
+
+class SelfAttention(nn.Module):
+    def __init__(self, dim, drop_path_rate):
+        super(SelfAttention, self).__init__()
+        self.dim = dim
+        self.key_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.query_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.attn_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.value_conv = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1, bias=False)
+
+    def forward(self, x, H, W):
+        B, N, C = x.shape
+        x = x.permute(0, 2, 1).reshape(B, C, H, W)
+        key = self.key_conv(x)
+        query = self.query_conv(x)
+        attn = self.attn_conv(key + query).view(B, C, -1)
+        attn = attn.softmax(dim=-1).view(B, C, H, W)
+        output = attn * self.value_conv(x)
+        output = output.reshape(B, C, N).permute(0, 2, 1)
+        return output
+
+# class SelfAttention(nn.Module):
+#     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
+#         super().__init__()
+#         assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
+
+#         self.dim = dim
+#         self.num_heads = num_heads
+#         head_dim = dim // num_heads
+#         self.scale = qk_scale or head_dim ** -0.5
+
+#         self.q = nn.Linear(dim, dim, bias=qkv_bias)
+#         self.kv = nn.Linear(dim, dim * 2, bias=qkv_bias)
+#         self.attn_drop = nn.Dropout(attn_drop)
+#         self.proj = nn.Linear(dim, dim)
+#         self.proj_drop = nn.Dropout(proj_drop)
+
+#         self.sr_ratio = sr_ratio
+#         if sr_ratio > 1:
+#             self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
+#             self.norm = nn.LayerNorm(dim)
+
+#         self.apply(self._init_weights)
+
+#     def _init_weights(self, m):
+#         if isinstance(m, nn.Linear):
+#             trunc_normal_(m.weight, std=.02)
+#             if isinstance(m, nn.Linear) and m.bias is not None:
+#                 nn.init.constant_(m.bias, 0)
+#         elif isinstance(m, nn.LayerNorm):
+#             nn.init.constant_(m.bias, 0)
+#             nn.init.constant_(m.weight, 1.0)
+#         elif isinstance(m, nn.Conv2d):
+#             fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+#             fan_out //= m.groups
+#             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+#             if m.bias is not None:
+#                 m.bias.data.zero_()
+
+#     def forward(self, x, H, W):
+        
+#         B, N, C = x.shape
+#         q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+
+#         if self.sr_ratio > 1:
+#             x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
+#             x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
+#             x_ = self.norm(x_)
+#             kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+#         else:
+#             kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+#         k, v = kv[0], kv[1]
+
+#         attn = (q @ k.transpose(-2, -1)) * self.scale
+#         attn = attn.softmax(dim=-1)
+#         attn = self.attn_drop(attn)
+
+#         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+#         x = self.proj(x)
+#         x = self.proj_drop(x)
+
+#         return x
+
+
 
 
 class Attention_dec(nn.Module):
@@ -521,10 +676,13 @@ class Block(nn.Module):
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, sr_ratio=1):
         super().__init__()
         self.norm1 = norm_layer(dim)
-        self.attn = Attention(
-            dim,
-            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
-            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio)
+        # self.attn = Attention(
+        #     dim,
+        #     num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+        #     attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio)
+        
+        self.attn = SelfDeformableAttention(dim, num_heads, num_levels=1, num_points=4, attn_drop=attn_drop)
+        # self.attn = SelfAttention(dim, drop_path_rate=attn_drop)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -655,20 +813,16 @@ class Tenc(EncoderTransformer):
     def __init__(self, **kwargs):
         super(Tenc, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
-            # patch_size=4, embed_dims=[128, 256, 512, 1024], num_heads=[1, 2, 4, 4], mlp_ratios=[2, 2, 2, 2],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[4, 8, 8, 16], sr_ratios=[4, 2, 2, 1],
-            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 4, 8, 16], sr_ratios=[4, 2, 2, 1],
-            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[4, 2, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[4, 8, 8, 16], sr_ratios=[4, 2, 2, 1],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[4, 2, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 class Tdec(DecoderTransformer):
     def __init__(self, **kwargs):
         super(Tdec, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            # patch_size=4, embed_dims=[128, 256, 512, 1024], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[8, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[4, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            # qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[8, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
 
 

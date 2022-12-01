@@ -138,9 +138,9 @@ class TrainData(data.Dataset):
         except:
             gt_img = Image.open(gt_name).convert('RGB')
 
-        # --- NOTE: data augmentation: CutMix --- #
-        if aug == 1:
-            input_img, gt_img = self.getCutMixImageNames(input_img, gt_img)
+        # # --- NOTE: data augmentation: CutMix --- #
+        # if aug == 1:
+        #     input_img, gt_img = self.getCutMixImageNames(input_img, gt_img)
 
         width, height = input_img.size
 

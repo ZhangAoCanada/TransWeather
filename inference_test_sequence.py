@@ -54,13 +54,17 @@ validate_sequence = ["a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4"]
 test_rain_dir = ["Rain"]
 test_sequence = ["ra1", "ra2", "ra3", "ra4", "rb1", "rb2", "rb3"]
 
-ckpt_path = "./ckpt/best_seq_normal"
+ckpt_path = "./ckpt/best_seq"
 mode = "evaluate" # ["evaluate", "inference"]
 
 ### NOTE: clear directory "./imgs" before inference ###
 for root, dirs, files in os.walk("./imgs"):
     for file in files:
         os.remove(os.path.join(root, file))
+    # remove subdirectories
+    for subdir in dirs:
+        shutil.rmtree(os.path.join(root, subdir))
+
 
 #set seed
 seed = args.seed
@@ -74,8 +78,8 @@ if seed is not None:
 device_ids = [Id for Id in range(torch.cuda.device_count())]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-net = TransweatherTeacher()
-# net = TransweatherSeq()
+# net = TransweatherTeacher()
+net = TransweatherSeq()
 summary(net, (1, 3, 720, 480))
 
 net = nn.DataParallel(net, device_ids=device_ids)
@@ -120,7 +124,10 @@ if mode == "evaluate":
             if not os.path.exists("./imgs/{}".format(sub_dir)):
                 os.makedirs("./imgs/{}".format(sub_dir))
             pred_img_single = torch.split(pred_image, 1, dim=0)
-            utils.save_image(pred_img_single[0], "./imgs/{}/{}_pred.png".format(sub_dir, ind))
+            input_img = torch.split(input_im, 1, dim=0)[0]
+            input_img = input_img * 0.5 + 0.5
+            img_to_save = torch.cat((input_img, pred_img_single[0], gt), dim=0)
+            utils.save_image(img_to_save, "./imgs/{}/{}_pred.png".format(sub_dir, ind))
 
             psnr_list.extend(calc_psnr(pred_image, gt))
             ssim_list.extend(calc_ssim(pred_image, gt))
@@ -159,7 +166,10 @@ elif mode == "inference":
             if not os.path.exists("./imgs/{}".format(sub_dir)):
                 os.makedirs("./imgs/{}".format(sub_dir))
             pred_img_single = torch.split(pred_image, 1, dim=0)
-            utils.save_image(pred_img_single[0], "./imgs/{}/{}_pred.png".format(sub_dir, ind))
+            input_img = torch.split(input_im, 1, dim=0)[0]
+            input_img = input_img * 0.5 + 0.5
+            img_to_save = torch.cat((input_img, pred_img_single[0]), dim=0)
+            utils.save_image(img_to_save, "./imgs/{}/{}_pred.png".format(sub_dir, ind))
 
     test_speed = sum(inference_time_durations) / (len(inference_time_durations) + 1e-10)
     print("------------ RESULTS on Dataset_Testing_RealRain ------------")

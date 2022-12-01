@@ -32,6 +32,7 @@ class TrainData(data.Dataset):
         self.crop_size = crop_size
         self.train_data_dir = train_data_dir
         self.seq_index = 0
+        self.aug = random.randint(0, 5)
     
     def getAllImageNames(self, train_data_dir, gt_dir, rain_dir, sequences):
         gt_imgs = []
@@ -75,6 +76,26 @@ class TrainData(data.Dataset):
         input_ims = [transform_input(input_img) for input_img in input_imgs]
         gts = [transform_gt(gt_img) for gt_img in gt_imgs]
 
+
+        ########### --- NOTE: data augmentation --- ###############
+        if self.aug == 1:
+            input_ims = [TF.hflip(input_im) for input_im in input_ims]
+            gts = [TF.hflip(gt) for gt in gts]
+        elif self.aug == 2:
+            input_ims = [TF.vflip(input_im) for input_im in input_ims]
+            gts = [TF.vflip(gt) for gt in gts]
+        elif self.aug == 3:
+            input_ims = [TF.rotate(input_im, 90) for input_im in input_ims]
+            gts = [TF.rotate(gt, 90) for gt in gts]
+        if self.aug == 4:
+            input_ims = [TF.rotate(input_im, 180) for input_im in input_ims]
+            gts = [TF.rotate(gt, 180) for gt in gts]
+        elif self.aug == 5:
+            input_ims = [TF.rotate(input_im, 270) for input_im in input_ims]
+            gts = [TF.rotate(gt, 270) for gt in gts]
+        ###########################################################
+
+
         # --- Normalize the input image --- #
         normalize_input = Compose([Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         input_ims = [normalize_input(input_im) for input_im in input_ims]
@@ -84,6 +105,10 @@ class TrainData(data.Dataset):
             self.seq_index += 1
             is_continue = False
             self.seq_index = 0 if self.seq_index >= len(self.seq_len) else self.seq_index
+
+        if not is_continue:
+            self.aug = random.randint(0, 5)
+
         return input_ims, gts, is_continue
 
     def __getitem__(self, index):

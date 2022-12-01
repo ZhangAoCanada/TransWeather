@@ -38,12 +38,12 @@ parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4
 parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
 parser.add_argument('-train_batch_size', help='Set the training batch size', default=1, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
-parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
+parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
-parser.add_argument('-logdir', help='for tensorboard', default="sequence1", type=str)
+parser.add_argument('-logdir', help='for tensorboard', default="seq3", type=str)
 
 args = parser.parse_args()
 
@@ -83,7 +83,8 @@ validate_gt_dir = ["GT"]
 validate_rain_dir = ["Rain"]
 validate_sequence = ["a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4"]
 
-transweather_pretrained_pth = "./ckpt/transweather_pretrained.pth"
+# transweather_pretrained_pth = "./ckpt/transweather_pretrained.pth"
+transweather_pretrained_pth = "./ckpt/normal_pretrained.pth"
 ckpt_path = "./ckpt/whatever"
 
 device_ids = [Id for Id in range(torch.cuda.device_count())]
@@ -102,36 +103,38 @@ vgg_model = vgg_model.to(device)
 for param in vgg_model.parameters():
     param.requires_grad = False
 
-modelbest_path = "./{}/best_seq".format(exp_name)
+# modelbest_path = "./{}/best_seq".format(exp_name)
 
-if os.path.exists('./{}/'.format(exp_name))==False:     
-    os.mkdir('./{}/'.format(exp_name))  
+# if os.path.exists('./{}/'.format(exp_name))==False:     
+#     os.mkdir('./{}/'.format(exp_name))  
 
-if os.path.exists(modelbest_path):
-    resume_state = torch.load(modelbest_path)
-    net.load_state_dict(resume_state["state_dict"])
-    optimizer.load_state_dict(resume_state["optimizer"])
-    epoch_start = resume_state["epoch"]
-    print("----- model '{}' loaded -----".format(modelbest_path))
-elif os.path.exists(ckpt_path):
-    resume_state = torch.load(ckpt_path)
-    net.load_state_dict(resume_state["state_dict"])
-    print("----- model '{}' loaded -----".format(ckpt_path))
-else:
-    print('--- no weight loaded ---')
+# if os.path.exists(modelbest_path):
+#     resume_state = torch.load(modelbest_path)
+#     net.load_state_dict(resume_state["state_dict"])
+#     optimizer.load_state_dict(resume_state["optimizer"])
+#     epoch_start = resume_state["epoch"]
+#     print("----- model '{}' loaded -----".format(modelbest_path))
+# elif os.path.exists(ckpt_path):
+#     resume_state = torch.load(ckpt_path)
+#     net.load_state_dict(resume_state["state_dict"])
+#     print("----- model '{}' loaded -----".format(ckpt_path))
+# else:
+#     print('--- no weight loaded ---')
 
 
-loss_network = LossNetwork(vgg_model)
-loss_network.eval()
+# loss_network = LossNetwork(vgg_model)
+# loss_network.eval()
 
 lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, train_gt_dir, train_rain_dir, train_sequence), batch_size=train_batch_size, shuffle=False, num_workers=1)
+
+# lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, train_gt_dir, train_rain_dir, train_sequence), batch_size=8, shuffle=True, num_workers=4)
 
 val_data_loader1 = DataLoader(ValData(validate_data_dir, validate_gt_dir, validate_rain_dir, validate_sequence), batch_size=val_batch_size, shuffle=False, num_workers=1)
 
 print("[INFO] Number of training data: {}".format(len(lbl_train_data_loader)))
 print("[INFO] Number of validation data: {}".format(len(val_data_loader1)))
 
-net.eval()
+# net.eval()
 
 # old_val_psnr1, old_val_ssim1 = validation_seq(net, val_data_loader1, device, exp_name)
 
@@ -157,8 +160,11 @@ for epoch in range(epoch_start,num_epochs):
     for batch_id, train_data  in enumerate(lbl_train_data_loader):
 
         input_image, gt, is_continue = train_data
+
         input_image = torch.concat(input_image, dim=0)
         gt = torch.concat(gt, dim=0)
+        is_continue = is_continue[0]
+
         input_image = input_image.to(device)
         gt = gt.to(device)
 
@@ -171,20 +177,18 @@ for epoch in range(epoch_start,num_epochs):
         ### NOTE: trying different loss functions ###
         # smooth_loss = F.smooth_l1_loss(pred_image, gt)
         # smooth_loss = F.mse_loss(pred_image, gt)
-
-        smooth_loss = psnr_loss(pred_image, gt)
+        # smooth_loss = psnr_loss(pred_image, gt) + F.smooth_l1_loss(pred_image, gt)
         # smooth_loss = psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
         # smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
-
         # smooth_loss = F.cross_entropy(pred_image, gt)
         # smooth_loss = F.kl_div(pred_image, gt) # Kullback-Leibler divergence 
         # smooth_loss = F.nll_loss(pred_image, gt) # negative log likelihood
 
+        # perceptual_loss = loss_network(pred_image, gt)
+        # loss = smooth_loss + lambda_loss*perceptual_loss 
 
-        perceptual_loss = loss_network(pred_image, gt)
-        loss = smooth_loss + lambda_loss*perceptual_loss 
+        loss = psnr_loss(pred_image, gt) + F.smooth_l1_loss(pred_image, gt)
 
-        # loss = F.smooth_l1_loss(pred_image, gt) + smooth_loss
 
         loss.backward()
         optimizer.step()
@@ -228,9 +232,12 @@ for epoch in range(epoch_start,num_epochs):
             if_reset = eval_start if eval_start else not if_continue
             pred_image = net(input_im, reset=if_reset)
             eval_start = False
-            val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
-            val_perceptual_loss = loss_network(pred_image, gt)
-            val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
+
+            # val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+            # val_perceptual_loss = loss_network(pred_image, gt)
+            # val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
+
+            val_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
             val_lossval_list.append(val_loss.item())
 
         psnr_list.extend(calc_psnr(pred_image, gt))

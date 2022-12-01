@@ -30,9 +30,9 @@ from utils import calc_psnr, calc_ssim
 
 
 
-model_load_path = "./ckpt/latest"
+model_load_path = "./ckpt/best_seq_normal"
 # model_load_path = "./ckpt/best_combinedData"
-model_save_path = "./ckpt/transweather_pretrained.pth"
+model_save_path = "./ckpt/normal_pretrained.pth"
 
 
 

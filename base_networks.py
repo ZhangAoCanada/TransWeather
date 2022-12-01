@@ -171,8 +171,8 @@ class ConvNeXtBlock(nn.Module):
         x = self.pwconv2(x)
         if self.gamma is not None:
             x = self.gamma * x
-        x = x.permute(0, 3, 1, 2) * 0.1
-        # x = x.permute(0, 3, 1, 2)
+        # x = x.permute(0, 3, 1, 2) * 0.1
+        x = x.permute(0, 3, 1, 2)
 
         x = input + self.drop_path(x)
         return x
@@ -197,7 +197,8 @@ class MBConvBlock(nn.Module):
         x = self.act(x)
         x = self.conv(x)
 
-        x = input + x * 0.1
+        # x = input + x * 0.1
+        x = input + x
         return x
 
 

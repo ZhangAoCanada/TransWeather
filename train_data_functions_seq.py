@@ -58,6 +58,11 @@ class TrainData(data.Dataset):
         return gt_imgs, rain_imgs, seq_len
 
     def get_images(self, index):
+        ########### --- NOTE: data augmentation --- ###############
+        aug = random.randint(0, 5)
+        ###########################################################
+
+
         input_name = self.input_names[index]
         gt_name = self.gt_names[index]
 
@@ -73,6 +78,27 @@ class TrainData(data.Dataset):
         transform_gt = Compose([ToTensor()])
         input_im = transform_input(input_img)
         gt = transform_gt(gt_img)
+
+
+        ########### --- NOTE: data augmentation --- ###############
+        if aug == 1:
+            input_im = TF.hflip(input_im)
+            gt = TF.hflip(gt)
+        elif aug == 2:
+            input_im = TF.vflip(input_im)
+            gt = TF.vflip(gt)
+        elif aug == 3:
+            input_im = TF.rotate(input_im, 90)
+            gt = TF.rotate(gt, 90)
+        if aug == 4:
+            input_im = TF.rotate(input_im, 180)
+            gt = TF.rotate(gt, 180)
+        elif aug == 5:
+            input_im = TF.rotate(input_im, 270)
+            gt = TF.rotate(gt, 270)
+        ###########################################################
+
+
 
         # --- Normalize the input image --- #
         normalize_input = Compose([Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
