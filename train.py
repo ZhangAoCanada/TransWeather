@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import time
 import torch
@@ -9,7 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from train_data_functions import TrainData
+# from train_data_functions import TrainData
+from train_data_functions_offset import TrainData
 from val_data_functions import ValData
 from utils import to_psnr, print_log, validation, adjust_learning_rate
 from torchvision.models import vgg16
@@ -19,8 +20,9 @@ import numpy as np
 import random 
 from torch.utils.tensorboard import SummaryWriter
 
+# from transweather_model_new import Transweather
 # from transweather_model import Transweather
-from transweather_model_new import Transweather
+from transweather_model_teacher import TransweatherTeacher as Transweather
 
 from train_psnrloss import PSNRLoss
 import pytorch_ssim
@@ -40,14 +42,14 @@ parser.add_argument('-learning_rate', help='Set the learning rate', default=2e-4
 parser.add_argument('-crop_size', help='Set the crop_size', default=[512, 512], nargs='+', type=int)
 parser.add_argument('-train_batch_size', help='Set the training batch size', default=10, type=int)
 parser.add_argument('-epoch_start', help='Starting epoch number of the training', default=0, type=int)
-parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
-# parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
+# parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.04, type=float)
+parser.add_argument('-lambda_loss', help='Set the lambda in loss function', default=0.01, type=float)
 parser.add_argument('-val_batch_size', help='Set the validation/test batch size', default=1, type=int)
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
 # parser.add_argument('-logdir', help='for tensorboard', default="TeacherTry12.5_combine", type=str)
-parser.add_argument('-logdir', help='for tensorboard', default="new_try_selfattn", type=str)
+parser.add_argument('-logdir', help='for tensorboard', default="further_offset", type=str)
 
 args = parser.parse_args()
 
@@ -77,21 +79,21 @@ print('learning_rate: {}\ncrop_size: {}\ntrain_batch_size: {}\nval_batch_size: {
 
 
 ##################### NOTE: Change the path to the dataset #####################
-# # train_data_dir = "/home/za/DATASET/DATA_20220531/train"
-# # validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
-# # test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
-# train_data_dir = "/home/za/DATASET/DATA_20220617/train"
-# validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
-# test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
-# rain_L_dir = "rain_L"
-# rain_H_dir = "rain_H"
-# gt_dir = "gt"
-
-train_data_dir = "/dataset/public/raindrop/train"
-validate_data_dir = "/dataset/public/raindrop/test"
-rain_L_dir = "data"
-rain_H_dir = None
+# train_data_dir = "/home/za/DATASET/DATA_20220531/train"
+# validate_data_dir = "/home/za/DATASET/DATA_20220531/validate"
+# test_data_dir = "/home/zhangao/za/DATA_20220531/test_specific"
+train_data_dir = "/home/za/DATASET/DATA_20220617/train"
+validate_data_dir = "/home/za/DATASET/DATA_20220617/validate"
+test_data_dir = "/home/za/DATASET/DATA_20220617/test_specific"
+rain_L_dir = "rain_L"
+rain_H_dir = "rain_H"
 gt_dir = "gt"
+
+# train_data_dir = "/dataset/public/raindrop/train"
+# validate_data_dir = "/dataset/public/raindrop/test"
+# rain_L_dir = "data"
+# rain_H_dir = None
+# gt_dir = "gt"
 
 # --- Gpu device --- #
 device_ids = [Id for Id in range(torch.cuda.device_count())]
@@ -143,8 +145,8 @@ else:
 
 # pytorch_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
 # print("Total_params: {}".format(pytorch_total_params))
-# loss_network = LossNetwork(vgg_model)
-# loss_network.eval()
+loss_network = LossNetwork(vgg_model)
+loss_network.eval()
 
 # --- Load training data and validation/test data --- #
 lbl_train_data_loader = DataLoader(TrainData(crop_size, train_data_dir, rain_L_dir, rain_H_dir, gt_dir), batch_size=train_batch_size, shuffle=True, num_workers=4)
@@ -208,15 +210,15 @@ for epoch in range(epoch_start,num_epochs):
         # smooth_loss = F.mse_loss(pred_image, gt)
         # smooth_loss = psnr_loss(pred_image, gt)
         # smooth_loss = psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
-        # smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+        smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
         # smooth_loss = F.cross_entropy(pred_image, gt)
         # smooth_loss = F.kl_div(pred_image, gt) # Kullback-Leibler divergence 
         # smooth_loss = F.nll_loss(pred_image, gt) # negative log likelihood
 
-        # perceptual_loss = loss_network(pred_image, gt)
-        # loss = smooth_loss + lambda_loss*perceptual_loss 
+        perceptual_loss = loss_network(pred_image, gt)
+        loss = smooth_loss + lambda_loss*perceptual_loss 
 
-        loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt)
+        # loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt)
 
 
         loss.backward()
@@ -268,11 +270,11 @@ for epoch in range(epoch_start,num_epochs):
             gt = gt.to(device)
             pred_image = net(input_im)
 
-            # val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
-            # val_perceptual_loss = loss_network(pred_image, gt)
-            # val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
+            val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+            val_perceptual_loss = loss_network(pred_image, gt)
+            val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
 
-            val_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt)
+            # val_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt)
 
             val_lossval_list.append(val_loss.item())
 

@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 import time
 import torch
@@ -20,7 +20,8 @@ import numpy as np
 import random 
 from torch.utils.tensorboard import SummaryWriter
 
-from transweather_sequence import TransweatherSeq
+# from transweather_sequence import TransweatherSeq
+from transweather_sequence_multi import TransweatherSeq
 # from transweather_model import Transweather
 from transweather_model_teacher import TransweatherTeacher
 
@@ -43,7 +44,7 @@ parser.add_argument('-val_batch_size', help='Set the validation/test batch size'
 parser.add_argument('-exp_name', help='directory for saving the networks of the experiment', default="ckpt", type=str)
 parser.add_argument('-seed', help='set random seed', default=19, type=int)
 parser.add_argument('-num_epochs', help='number of epochs', default=1000, type=int)
-parser.add_argument('-logdir', help='for tensorboard', default="seq6_lstm", type=str)
+parser.add_argument('-logdir', help='for tensorboard', default="seq8_multi", type=str)
 
 args = parser.parse_args()
 
@@ -103,7 +104,7 @@ vgg_model = vgg_model.to(device)
 for param in vgg_model.parameters():
     param.requires_grad = False
 
-modelbest_path = "./{}/best_seq".format(exp_name)
+modelbest_path = "./{}/best_seq_parallel".format(exp_name)
 
 if os.path.exists('./{}/'.format(exp_name))==False:     
     os.mkdir('./{}/'.format(exp_name))  
@@ -204,7 +205,7 @@ for epoch in range(epoch_start,num_epochs):
                             "state_dict": net.state_dict(),
                             "optimizer": optimizer.state_dict()
                         }
-            torch.save(save_state, './{}/latest_seq'.format(exp_name))
+            torch.save(save_state, './{}/latest_seq_parallel'.format(exp_name))
             print('Epoch: {0}, Iteration: {1}, loss: {2}'.format(epoch, batch_id, loss.item()))
 
     train_psnr = sum(psnr_list) / len(psnr_list)
@@ -214,7 +215,7 @@ for epoch in range(epoch_start,num_epochs):
                     "state_dict": net.state_dict(),
                     "optimizer": optimizer.state_dict()
                 }
-    torch.save(save_state, './{}/latest_seq'.format(exp_name))
+    torch.save(save_state, './{}/latest_seq_parallel'.format(exp_name))
 
     net.eval()
 
@@ -233,11 +234,12 @@ for epoch in range(epoch_start,num_epochs):
             pred_image = net(input_im, reset=if_reset)
             eval_start = False
 
-            # val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
-            # val_perceptual_loss = loss_network(pred_image, gt)
-            # val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
+            val_smooth_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+            val_perceptual_loss = loss_network(pred_image, gt)
+            val_loss = val_smooth_loss + lambda_loss * val_perceptual_loss 
 
-            val_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+            # val_loss = F.smooth_l1_loss(pred_image, gt) + psnr_loss(pred_image, gt) - ssim_loss(pred_image, gt)
+
             val_lossval_list.append(val_loss.item())
 
         psnr_list.extend(calc_psnr(pred_image, gt))
@@ -261,6 +263,6 @@ for epoch in range(epoch_start,num_epochs):
                         "state_dict": net.state_dict(),
                         "optimizer": optimizer.state_dict()
                     }
-        torch.save(save_state, './{}/best_seq'.format(exp_name))
+        torch.save(save_state, './{}/best_seq_parallel'.format(exp_name))
         print('model saved')
         old_val_psnr1 = val_psnr1

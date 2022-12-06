@@ -1,3 +1,4 @@
+from collections import deque
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,6 +9,11 @@ from multi_scale_deformable_attn_function import MultiScaleDeformableAttnFunctio
 from mmcv.ops.multi_scale_deform_attn import multi_scale_deformable_attn_pytorch, MultiScaleDeformableAttention
 from transweather_model import Transweather
 from transweather_model_teacher import TransweatherTeacher
+
+from typing import Sequence
+from functools import partial, reduce
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from timm.models.layers import DropPath, trunc_normal_
 
 
 class LSTMSeq(nn.Module):
@@ -169,208 +175,6 @@ class DownSampleResidualBlock(nn.Module):
         return out
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class CrossDeformableAttention(nn.Module):
-#     def __init__(self, dim, num_heads, num_levels, num_points, attn_drop=0.):
-#         super(CrossDeformableAttention, self).__init__()
-#         self.multiscale_deformable_attn_fn = MultiScaleDeformableAttention(dim, num_heads, num_levels, num_points, dropout=attn_drop)
-#         self.dim = dim
-#         self.num_heads = num_heads
-#         self.num_levels = num_levels
-#         self.num_points = num_points
-#         self.output_proj = nn.Linear(dim, dim)
-        
-#         ### NOTE: extra ###
-#         self.previous_features = None
-
-#         ### NOTE: for concat and process ###
-#         self.middle_forward = DownSampleResidualBlock(dim=512 * 2, dim_out=512, stride=1)
-    
-#     def init_weights(self):
-#         xavier_init(self.output_proj, distribution='uniform', bias=0.)
-    
-#     ### NOTE: extra ###
-#     def reset_previous_features(self):
-#         self.previous_features = None
-    
-#     ### NOTE: extra ###
-#     def update_previous_features(self, x):
-#         self.eval()
-#         with torch.no_grad():
-#             self.previous_features = x.clone()
-#         self.train()
-
-#     ### NOTE: for concat and process ###
-#     def process_previous_feature(self, x):
-#         output = torch.concat([self.previous_features, x], dim=1)
-#         output = self.middle_forward(output)
-#         return output
-    
-#     def forward(self, value):
-#         ### NOTE: extra ###
-#         if self.previous_features is None:
-#             self.update_previous_features(value)
-#         ### NOTE: for concat and process ###
-#         self.previous_features = self.process_previous_feature(value) 
-#         query = self.previous_features
-
-#         assert query.shape == value.shape
-#         x_in = value
-#         b, c, w, h = value.shape
-#         num_query = num_value = w * h
-#         query = query.permute(0, 2, 3, 1).contiguous().view(b, w*h, c)
-#         value = value.permute(0, 2, 3, 1).contiguous().view(b, w*h, c)
-
-#         spatial_shapes = torch.tensor([h, w], dtype=torch.long).repeat(self.num_levels, 1).cuda()
-
-#         query = query.permute(1, 0, 2)
-#         value = value.permute(1, 0, 2)
-
-#         # create meshgrid with shape (H, W, 2)
-#         meshgrid = torch.stack(torch.meshgrid([torch.arange(h), torch.arange(w)]), dim=-1).float().cuda()
-#         meshgrid = meshgrid / torch.tensor([h - 1, w - 1], dtype=torch.float).cuda()
-#         meshgrid = meshgrid.view(1, h, w, 1, 2).repeat(b, 1, 1, self.num_levels, 1).view(b, num_query, self.num_levels, 2)
-
-#         spatial_shapes_for_start = [(h, w)]
-#         spatial_shapes_for_start = torch.as_tensor(spatial_shapes_for_start, dtype=torch.long).cuda()
-#         level_start_index = torch.cat((spatial_shapes_for_start.new_zeros((1,)), spatial_shapes_for_start.prod(1).cumsum(0)[:-1]))
-
-#         output = self.multiscale_deformable_attn_fn(
-#                         query=query, 
-#                         value=value, 
-#                         reference_points=meshgrid, 
-#                         spatial_shapes=spatial_shapes, 
-#                         level_start_index=level_start_index
-#                         )
-#         output = output.permute(1, 0, 2)
-#         output = self.output_proj(output)
-
-#         output = output.view(b, w, h, c).permute(0, 3, 1, 2)
-
-#         ### NOTE: extra ###
-#         self.update_previous_features(output)
-
-#         ### TODO: residual connection ###
-#         output = output + x_in
-
-#         return output
-
-
-# # class TransweatherSeq(Transweather):
-# class TransweatherSeq(TransweatherTeacher):
-#     def __init__(self, seq_depth=1, ckpt_path=None):
-#         super(TransweatherSeq, self).__init__(ckpt_path)
-#         self.seq_depth = 6
-#         # self.layers = nn.ModuleList([CrossAttention(dim=512, num_heads=8, dropout=0.1) for _ in range(self.seq_depth)])
-#         # self.layers = nn.ModuleList([CrossAttentionFast(dim=512, num_heads=8, attn_drop=0., sr_ratio=2) for _ in range(self.seq_depth)])
-
-#         # self.layers = nn.ModuleList([CrossDeformableAttention(dim=512, num_heads=8, num_levels=1, num_points=4, attn_drop=0.) for _ in range(self.seq_depth)])
-
-#         self.lstm = LSTMSeq(dim=512, hidden_dim=512, num_layers=self.seq_depth)
-   
-#     def updatePreviousFeature(self, x):
-#         self.eval()
-#         with torch.no_grad():
-#             output = x.clone()
-#             self.train()
-#             return output
-
-#     # def crossAttnSelf(self, x, reset=False):
-#     #     x = x[0]
-#     #     for layer in self.layers:
-#     #         if reset:
-#     #             layer.reset_previous_features()
-#     #         x = layer(x)
-#     #     return [x]
-    
-#     def lstmAttn(self, x, reset=False):
-#         x = x[0]
-#         if reset:
-#             self.lstm.reset_hidden()
-#         x = self.lstm(x)
-#         return [x]
-
-#     def forward(self, x, reset=False):
-
-#         x1 = self.Tenc(x)
-#         x2 = self.Tdec(x1)
-
-#         x2 = self.lstmAttn(x2, reset=reset)
-#         # x2 = self.crossAttnSelf(x2, reset=reset)
-
-#         x = self.convtail(x1, x2)
-#         clean = self.active(self.clean(x))
-
-#         return clean
-    
-#     ### NOTE: only train self.cross_attn ###
-#     def train(self, mode=True):
-#         # super(TransweatherSeq, self).train(False)
-#         self.Tenc.train(False)
-#         self.Tdec.train(False)
-#         self.convtail.train(False)
-#         self.clean.train(False)
-#         # for layer in self.layers:
-#         #     layer.train(mode)
-#         self.lstm.train(mode)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class CrossDeformableAttention(nn.Module):
     def __init__(self, dim, num_heads, num_levels, num_points, attn_drop=0.):
         super(CrossDeformableAttention, self).__init__()
@@ -424,58 +228,240 @@ class CrossDeformableAttention(nn.Module):
         return output
 
 
-# class TransweatherSeq(Transweather):
-class TransweatherSeq(TransweatherTeacher):
-    def __init__(self, ckpt_path=None):
-        super(TransweatherSeq, self).__init__(ckpt_path)
-        self.seq_depth = 6
-        self.previous_feature = None
-        # self.cross_attn = CrossAttention(dim=512, num_heads=8, dropout=0.1)
-        # self.cross_attn = CrossAttentionFast(dim=512, num_heads=8, attn_drop=0., sr_ratio=2)
+############################################################################
+############################################################################
+######################### NOTE: from MetaFormer ############################
+############################################################################
+############################################################################
+class Pooling(nn.Module):
+    """
+    Implementation of pooling for PoolFormer
+    --pool_size: pooling size
+    """
+    def __init__(self, pool_size=3):
+        super().__init__()
+        self.pool = nn.AvgPool2d(
+            pool_size, stride=1, padding=pool_size//2, count_include_pad=False)
 
-        # self.cross_attn = CrossDeformableAttention(dim=512, num_heads=8, num_levels=1, num_points=4, attn_drop=0.)
-        self.layers = nn.ModuleList([CrossDeformableAttention(dim=512, num_heads=8, num_levels=1, num_points=4, attn_drop=0.) for _ in range(self.seq_depth)])
+    def forward(self, x):
+        return self.pool(x) - x
 
-        ### NOTE: for concat and process ###
-        self.middle_forward = DownSampleResidualBlock(dim=512 * 2, dim_out=512, stride=1)
+class Mlp(nn.Module):
+    """
+    Implementation of MLP with 1*1 convolutions.
+    Input: tensor with shape [B, C, H, W]
+    """
+    def __init__(self, in_features, hidden_features=None, 
+                 out_features=None, act_layer=nn.GELU, drop=0.):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Conv2d(in_features, hidden_features, 1)
+        self.act = act_layer()
+        self.fc2 = nn.Conv2d(hidden_features, out_features, 1)
+        self.drop = nn.Dropout(drop)
+        self.apply(self._init_weights)
 
-    def updatePreviousFeature(self, x):
+    def _init_weights(self, m):
+        if isinstance(m, nn.Conv2d):
+            trunc_normal_(m.weight, std=.02)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = self.drop(x)
+        return x
+
+class GroupNorm(nn.GroupNorm):
+    """
+    Group Normalization with 1 group.
+    Input: tensor in shape [B, C, H, W]
+    """
+    def __init__(self, num_channels, **kwargs):
+        super().__init__(1, num_channels, **kwargs)
+
+class LayerNormChannel(nn.Module):
+    """
+    LayerNorm only for Channel Dimension.
+    Input: tensor in shape [B, C, H, W]
+    """
+    def __init__(self, num_channels, eps=1e-05):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(num_channels))
+        self.bias = nn.Parameter(torch.zeros(num_channels))
+        self.eps = eps
+
+    def forward(self, x):
+        u = x.mean(1, keepdim=True)
+        s = (x - u).pow(2).mean(1, keepdim=True)
+        x = (x - u) / torch.sqrt(s + self.eps)
+        x = self.weight.unsqueeze(-1).unsqueeze(-1) * x \
+            + self.bias.unsqueeze(-1).unsqueeze(-1)
+        return x
+
+class PatchEmbed(nn.Module):
+    """
+    Patch Embedding that is implemented by a layer of conv. 
+    Input: tensor in shape [B, C, H, W]
+    Output: tensor in shape [B, C, H/stride, W/stride]
+    """
+    def __init__(self, patch_size=16, stride=16, padding=0, 
+                 in_chans=3, embed_dim=768, norm_layer=None):
+        super().__init__()
+        patch_size = to_2tuple(patch_size)
+        stride = to_2tuple(stride)
+        padding = to_2tuple(padding)
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, 
+                              stride=stride, padding=padding)
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        x = self.proj(x)
+        x = self.norm(x)
+        return x
+
+class SpatialFc(nn.Module):
+    """SpatialFc module that take features with shape of (B,C,*) as input.
+    """
+    def __init__(
+        self, spatial_shape=[14, 14], **kwargs, 
+        ):
+        super().__init__()
+        if isinstance(spatial_shape, int):
+            spatial_shape = [spatial_shape]
+        assert isinstance(spatial_shape, Sequence), \
+            f'"spatial_shape" must by a sequence or int, ' \
+            f'get {type(spatial_shape)} instead.'
+        N = reduce(lambda x, y: x * y, spatial_shape)
+        self.fc = nn.Linear(N, N, bias=False)
+
+    def forward(self, x):
+        # input shape like [B, C, H, W]
+        shape = x.shape
+        x = torch.flatten(x, start_dim=2) # [B, C, H*W]
+        x = self.fc(x) # [B, C, H*W]
+        x = x.reshape(*shape) # [B, C, H, W]
+        return x
+
+class AddPositionEmb(nn.Module):
+    """Module to add position embedding to input features
+    """
+    def __init__(
+        self, dim=384, spatial_shape=[14, 14],
+        ):
+        super().__init__()
+        if isinstance(spatial_shape, int):
+            spatial_shape = [spatial_shape]
+        assert isinstance(spatial_shape, Sequence), \
+            f'"spatial_shape" must by a sequence or int, ' \
+            f'get {type(spatial_shape)} instead.'
+        if len(spatial_shape) == 1:
+            embed_shape = list(spatial_shape) + [dim]
+        else:
+            embed_shape = [dim] + list(spatial_shape)
+        self.pos_embed = nn.Parameter(torch.zeros(1, *embed_shape))
+    def forward(self, x):
+        return x+self.pos_embed
+############################################################################
+############################################################################
+######################### NOTE: from MetaFormer ############################
+############################################################################
+############################################################################
+
+
+
+class DeepSequence(nn.Module):
+    def __init__(self, dim, num_depth, num_prev):
+        super(DeepSequence, self).__init__()
+        self.dim = dim
+        self.num_depth = num_depth
+        self.num_prev = num_prev
+        self.prev_queue = []
+        self.layers = nn.ModuleList(
+                            [CrossDeformableAttention(
+                                        dim=512, 
+                                        num_heads=8, 
+                                        num_levels=1, 
+                                        num_points=4, 
+                                        attn_drop=0.
+                                        ) for _ in range(self.num_depth)]
+                            )
+        self.pos_embed = nn.Parameter(torch.zeros(1, dim, 1, 1))
+    
+    def checkQueue(self):
+        while len(self.prev_queue) > self.num_prev:
+            self.prev_queue.pop(0)
+    
+    def getPrev(self, x):
+        if len(self.prev_queue) == 0:
+            return x
+
+        prev = self.prev_queue[0]
+        for i in range(len(self.prev_queue) - 1):
+            prev_output = self.forwardProcess(self.prev_queue[i+1], prev)
+            prev += prev_output
+
+        # prev = torch.zeros_like(x)
+        # for i in range(len(self.prev_queue)):
+        #     prev += self.forwardProcess(self.prev_queue[i], x)
+
+        return prev
+    
+    def forwardProcess(self, prev, x):
         self.eval()
         with torch.no_grad():
-            output = x.clone()
-            self.train()
-        return output
+            # prev = prev + self.pos_embed
+            x = x + self.pos_embed
+            for layer in self.layers:
+                # x = layer(prev, x)
+                prev = layer(prev, x)
+            x = prev
+        self.train()
+        self.prev_queue.append(x)
+        self.checkQueue()
+        return x
     
-    ### NOTE: for concat and process ###
-    def processPreviousFeature(self, x):
-        output = torch.concat([self.previous_feature, x], dim=1)
-        output = self.middle_forward(output)
-        return output
-
-    def sequenceAttention(self, x, reset=False):
-        x = x[0]
-        if self.previous_feature is None:
-            self.previous_feature = self.updatePreviousFeature(x)
-
-        ### NOTE: for concat and process ###
-        self.previous_feature = self.processPreviousFeature(x)
-
-        # output = self.cross_attn(self.previous_feature, x_in)
+    def forward(self, x, reset):
+        x_in = x
+        if reset:
+            self.prev_queue = []
+        prev = self.getPrev(x)
+        # prev = prev + self.pos_embed
+        x = x + self.pos_embed
         for layer in self.layers:
-            x = layer(self.previous_feature, x)
+            # x = layer(prev, x)
+            prev = layer(prev, x)
+        x = prev
+        x = x + x_in
+        return x
 
-        self.previous_feature = self.updatePreviousFeature(x)
-        return [x]
+
+# class TransweatherSeq(Transweather):
+class TransweatherSeq(TransweatherTeacher):
+    def __init__(self, ckpt_path=None, num_repeat=1):
+        super(TransweatherSeq, self).__init__(ckpt_path)
+        self.num_repeat = 1
+        self.deep_seq_list = nn.ModuleList(
+                                [DeepSequence(
+                                            dim=512, 
+                                            num_depth=6, 
+                                            num_prev=10
+                                            ) for _ in range(self.num_repeat)]
+                                )
 
     def forward(self, x, reset=False):
-        if reset:
-            self.previous_feature = None
-
         x1 = self.Tenc(x)
         x2 = self.Tdec(x1)
 
-        x2 = self.sequenceAttention(x2, reset=reset)
+        x_in = x2[0]
+        for deep_seq in self.deep_seq_list:
+            x_in = deep_seq(x_in, reset)
 
+        x2 = [x_in]
         x = self.convtail(x1, x2)
         clean = self.active(self.clean(x))
 
@@ -488,8 +474,7 @@ class TransweatherSeq(TransweatherTeacher):
         self.Tdec.train(False)
         self.convtail.train(False)
         self.clean.train(False)
-        # self.cross_attn.train(mode)
-        for layer in self.layers:
+        for layer in self.deep_seq_list:
             layer.train(mode)
 
 

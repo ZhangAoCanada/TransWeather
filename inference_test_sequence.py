@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 from genericpath import exists
 import sys
@@ -54,7 +54,7 @@ validate_sequence = ["a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4"]
 test_rain_dir = ["Rain"]
 test_sequence = ["ra1", "ra2", "ra3", "ra4", "rb1", "rb2", "rb3"]
 
-ckpt_path = "./ckpt/best_seq"
+ckpt_path = "./ckpt/latest_seq_crossdeformable6+res+middle+percept"
 mode = "evaluate" # ["evaluate", "inference"]
 
 ### NOTE: clear directory "./imgs" before inference ###
